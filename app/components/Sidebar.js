@@ -13,19 +13,31 @@ export default function Sidebar() {
     router.push("/login");
   }
 
+  function fecharMenu() {
+    setAberto(false);
+  }
+
   return (
     <>
       <button
-        onClick={() => setAberto(!aberto)}
-        className="fixed top-4 left-4 z-50 bg-black text-white p-3 rounded-xl md:hidden"
+        onClick={() => setAberto(true)}
+        className="fixed top-4 left-4 z-50 bg-black text-white px-4 py-3 rounded-xl md:hidden"
       >
         ☰
       </button>
 
+      {aberto && (
+        <div
+          onClick={fecharMenu}
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+        />
+      )}
+
       <aside
         className={`
-          fixed top-0 left-0 h-screen w-64 bg-black text-white p-6 flex flex-col justify-between z-40
-          transform transition-transform duration-300
+          fixed top-0 left-0 h-screen bg-black text-white p-6 flex flex-col justify-between z-40
+          w-64 max-w-[80vw]
+          transition-transform duration-300
           ${aberto ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0
         `}
@@ -36,23 +48,43 @@ export default function Sidebar() {
           </h1>
 
           <nav className="flex flex-col gap-4">
-            <Link href="/" className="hover:bg-gray-800 p-3 rounded-xl">
+            <Link
+              href="/"
+              onClick={fecharMenu}
+              className="hover:bg-gray-800 p-3 rounded-xl"
+            >
               Home
             </Link>
 
-            <Link href="/pacientes" className="hover:bg-gray-800 p-3 rounded-xl">
+            <Link
+              href="/pacientes"
+              onClick={fecharMenu}
+              className="hover:bg-gray-800 p-3 rounded-xl"
+            >
               Pacientes
             </Link>
 
-            <Link href="/consultas" className="hover:bg-gray-800 p-3 rounded-xl">
+            <Link
+              href="/consultas"
+              onClick={fecharMenu}
+              className="hover:bg-gray-800 p-3 rounded-xl"
+            >
               Consultas
             </Link>
 
-            <Link href="/financeiro" className="hover:bg-gray-800 p-3 rounded-xl">
+            <Link
+              href="/financeiro"
+              onClick={fecharMenu}
+              className="hover:bg-gray-800 p-3 rounded-xl"
+            >
               Financeiro
             </Link>
 
-            <Link href="/estoque" className="hover:bg-gray-800 p-3 rounded-xl">
+            <Link
+              href="/estoque"
+              onClick={fecharMenu}
+              className="hover:bg-gray-800 p-3 rounded-xl"
+            >
               Estoque
             </Link>
           </nav>
