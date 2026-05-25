@@ -41,13 +41,13 @@ export default function Dashboard() {
 
         <Sidebar />
 
-        <main className="ml-64 p-10 w-full">
+        <main className="md:ml-64 p-4 md:p-10 w-full">
 
           <h1 className="text-4xl font-bold mb-10 text-black">
             Dashboard
           </h1>
 
-          <div className="grid grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
 
             <div className="bg-white p-6 rounded-2xl shadow">
 
@@ -99,7 +99,7 @@ export default function Dashboard() {
 
           </div>
 
-          <div className="grid grid-cols-3 gap-6 mt-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-8">
 
             <div className="bg-white p-6 rounded-2xl shadow">
 
@@ -113,7 +113,7 @@ export default function Dashboard() {
 
             </div>
 
-            <div className="bg-black p-6 rounded-2xl shadow col-span-2">
+            <div className="bg-black p-6 rounded-2xl shadow md:col-span-2">
 
               <h2 className="text-gray-300">
                 Lucro Líquido
