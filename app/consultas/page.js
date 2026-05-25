@@ -71,9 +71,9 @@ export default function Consultas() {
 
         <Sidebar />
 
-        <main className="ml-64 w-full p-10">
+        <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
 
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
 
             <h1 className="text-4xl font-bold text-black">
               Consultas
@@ -186,9 +186,9 @@ export default function Consultas() {
 
           )}
 
-          <div className="bg-white rounded-2xl shadow overflow-hidden">
+          <div className="bg-white rounded-2xl shadow overflow-x-auto">
 
-            <table className="w-full">
+            <table className="w-full min-w-[1000px]">
 
               <thead className="bg-black text-white">
 

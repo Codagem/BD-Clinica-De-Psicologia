@@ -37,13 +37,13 @@ export default function Financeiro() {
 
         <Sidebar />
 
-        <main className="ml-64 w-full p-10">
+        <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
 
           <h1 className="text-4xl font-bold text-black mb-10">
             Financeiro
           </h1>
 
-          <div className="grid grid-cols-3 gap-6 mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
 
             <div className="bg-white p-6 rounded-2xl shadow">
 
@@ -164,13 +164,13 @@ export default function Financeiro() {
 
           </div>
 
-          <div className="bg-white rounded-2xl shadow overflow-hidden">
+          <div className="bg-white rounded-2xl shadow overflow-x-auto">
 
             <div className="bg-black text-white p-4 text-xl font-bold">
               Despesas
             </div>
 
-            <table className="w-full">
+            <table className="w-full min-w-[1000px]">
 
               <thead className="bg-gray-200 text-black">
 
