@@ -12,6 +12,10 @@ Banco de dados desenvolvido para gerenciamento de uma clínica de psicologia.
 ## Tecnologias
 - MySQL
 - SQL
+- JavaScript, CSS e HTML
+
+## Tabelas Presentes
+
 
 ## Como usar
 1. Baixe o arquivo `clinica_psicologia.sql`
