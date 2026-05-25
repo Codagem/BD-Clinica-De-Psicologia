@@ -15,7 +15,7 @@ Banco de dados desenvolvido para gerenciamento de uma clínica de psicologia.
 - JavaScript, CSS e HTML
 
 ## Tabelas Presentes
-
+### Consulta
 
 ## Como usar
 1. Baixe o arquivo `clinica_psicologia.sql`
