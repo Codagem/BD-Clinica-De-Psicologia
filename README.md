@@ -3,8 +3,7 @@
 Banco de dados desenvolvido para gerenciamento de uma clínica de psicologia.
 
 ## Funcionalidades
-- Cadastro de pacientes
-- Cadastro de psicólogos
+- Cadastro de pacientes e psicólogos
 - Agendamentos
 - Consultas
 - Controle administrativo
