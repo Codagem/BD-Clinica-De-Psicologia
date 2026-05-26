@@ -16,7 +16,8 @@ Banco de dados desenvolvido para gerenciamento de uma clínica de psicologia.
 ## Tabelas Presentes
 ### •Consulta
  É responsável por armazenar todas as consultas 
- //imagem
+ 
+//imagem
  
 ### •Agendamento
  É responsável por armazenar os agendamentos dos pacientes
