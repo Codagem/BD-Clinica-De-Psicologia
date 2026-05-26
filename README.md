@@ -12,6 +12,7 @@ Banco de dados desenvolvido para gerenciamento de uma clínica de psicologia.
 - MySQL
 - SQL
 - JavaScript, CSS e HTML
+- Render
 
 ## Tabelas Presentes
 ### •Consulta
@@ -21,123 +22,152 @@ Banco de dados desenvolvido para gerenciamento de uma clínica de psicologia.
  
 ### •Agendamento
  É responsável por armazenar os agendamentos dos pacientes
- //imagem
+ 
+//imagem
  
 ### •Psicólogos 
  Registra todos os psicólogos que trabalham na clínica
- //imagem
+ 
+//imagem
  
 ### •Estoque
  Armazena a informação de todo item presente no estoque
- //imagem
+ 
+//imagem
  
 ### •Despesas
  Registra as despesas gerais da clínica
- //imagem
+ 
+//imagem
  
 ### •Pacientes
  Registra todos os pacientes cadastrados no sistema da clínica
- //imagem
+ 
+//imagem
 
  ## Functions
  ### •Consulta
  //imagem
- //explicação
+ 
+//explicação
  
 ### •Agendamento
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Psicólogos 
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Estoque
  //imagem
- // Explicação
+ 
+// Explicação
  
 ### •Despesas
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Pacientes
  //imagem
- //Explicação
+ 
+//Explicação
 
 ## Triggers
  ### •Consulta
  //imagem
- //explicação
+ 
+//explicação
  
 ### •Agendamento
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Psicólogos 
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Estoque
  //imagem
- // Explicação
+ 
+// Explicação
  
 ### •Despesas
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Pacientes
  //imagem
- //Explicação
+ 
+//Explicação
 
 ## Views
  ### •Consulta
  //imagem
- //explicação
+ 
+//explicação
  
 ### •Agendamento
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Psicólogos 
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Estoque
  //imagem
- // Explicação
+ 
+// Explicação
  
 ### •Despesas
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Pacientes
  //imagem
- //Explicação
+ 
+//Explicação
 
 ## Procedures
  ### •Consulta
  //imagem
- //explicação
+ 
+//explicação
  
 ### •Agendamento
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Psicólogos 
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Estoque
  //imagem
- // Explicação
+ 
+// Explicação
  
 ### •Despesas
  //imagem
- //Explicação
+ 
+//Explicação
  
 ### •Pacientes
  //imagem
- //Explicação
+ 
+//Explicação
 
 
 ## Como usar
@@ -145,3 +175,5 @@ Banco de dados desenvolvido para gerenciamento de uma clínica de psicologia.
 2. Abra o phpMyAdmin ou MySQL Workbench
 3. Importe o arquivo
 4. Execute o script
+
+## Como conectar no servidor
