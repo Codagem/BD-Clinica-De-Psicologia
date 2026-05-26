@@ -177,3 +177,5 @@ Banco de dados desenvolvido para gerenciamento de uma clínica de psicologia.
 4. Execute o script
 
 ## Como conectar no servidor
+1. Abra o PgAdmin4// imagem
+2.
