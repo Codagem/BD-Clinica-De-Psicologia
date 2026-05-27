@@ -41,36 +41,43 @@ export default function Financeiro() {
   }
 
   async function cadastrarPagamento() {
-    try {
-      await fetch("/api/financeiro", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          tipo: "pagamento",
-          id_consulta: idConsulta,
-          valor: valorPagamento,
-          forma_pagamento: formaPagamento,
-          status_pagamento: statusPagamento,
-          data_pagamento: dataPagamento,
-        }),
-      });
+  try {
+    const resposta = await fetch("/api/financeiro", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        tipo: "pagamento",
+        id_consulta: Number(idConsulta),
+        valor: Number(valorPagamento),
+        forma_pagamento: formaPagamento,
+        status_pagamento: statusPagamento,
+        data_pagamento: dataPagamento,
+      }),
+    });
 
-      toast.success("Pagamento cadastrado com sucesso!");
+    const resultado = await resposta.json();
 
-      setIdConsulta("");
-      setValorPagamento("");
-      setFormaPagamento("Pix");
-      setStatusPagamento("Pago");
-      setDataPagamento("");
-      setMostrarPagamento(false);
-
-      carregarFinanceiro();
-    } catch (error) {
-      toast.error("Erro ao cadastrar pagamento.");
+    if (resultado.erro) {
+      toast.error(resultado.erro);
+      return;
     }
+
+    toast.success("Pagamento cadastrado com sucesso!");
+
+    setIdConsulta("");
+    setValorPagamento("");
+    setFormaPagamento("Pix");
+    setStatusPagamento("Pago");
+    setDataPagamento("");
+    setMostrarPagamento(false);
+
+    carregarFinanceiro();
+  } catch (error) {
+    toast.error("Erro ao cadastrar pagamento.");
   }
+}
 
   async function cadastrarDespesa() {
     try {
@@ -254,6 +261,7 @@ export default function Financeiro() {
 
                 <input
                   type="date"
+                  lang="en-CA"
                   value={dataPagamento}
                   onChange={(e) => setDataPagamento(e.target.value)}
                   className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
