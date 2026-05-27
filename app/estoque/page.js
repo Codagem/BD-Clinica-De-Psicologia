@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { motion } from "framer-motion";
 import Sidebar from "../components/Sidebar";
 import Protegido from "../components/Protegido";
 
@@ -21,28 +23,34 @@ export default function Estoque() {
   }
 
   async function cadastrarProduto() {
-    await fetch("/api/estoque", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        nome,
-        categoria,
-        quantidade_atual: quantidadeAtual,
-        quantidade_minima: quantidadeMinima,
-        fornecedor,
-      }),
-    });
+    try {
+      await fetch("/api/estoque", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nome,
+          categoria,
+          quantidade_atual: quantidadeAtual,
+          quantidade_minima: quantidadeMinima,
+          fornecedor,
+        }),
+      });
 
-    carregarProdutos();
+      toast.success("Produto cadastrado com sucesso!");
 
-    setNome("");
-    setCategoria("");
-    setQuantidadeAtual("");
-    setQuantidadeMinima("");
-    setFornecedor("");
-    setMostrarFormulario(false);
+      carregarProdutos();
+
+      setNome("");
+      setCategoria("");
+      setQuantidadeAtual("");
+      setQuantidadeMinima("");
+      setFornecedor("");
+      setMostrarFormulario(false);
+    } catch (error) {
+      toast.error("Erro ao cadastrar produto.");
+    }
   }
 
   useEffect(() => {
@@ -86,7 +94,7 @@ export default function Estoque() {
 
             <button
               onClick={() => setMostrarFormulario(!mostrarFormulario)}
-              className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 transition"
+              className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
             >
               + Novo Produto
             </button>
@@ -115,7 +123,11 @@ export default function Estoque() {
           </div>
 
           {mostrarFormulario && (
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8"
+            >
               <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
                 Novo Produto
               </h2>
@@ -164,11 +176,11 @@ export default function Estoque() {
 
               <button
                 onClick={cadastrarProduto}
-                className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl mt-5 shadow hover:opacity-90 transition"
+                className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl mt-5 shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
               >
                 Salvar Produto
               </button>
-            </div>
+            </motion.div>
           )}
 
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
@@ -255,8 +267,10 @@ export default function Estoque() {
                 const baixo = estoqueBaixo(produto);
 
                 return (
-                  <div
+                  <motion.div
                     key={produto.id_produto}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
                     className={`rounded-3xl p-5 border shadow-sm ${
                       baixo
                         ? "bg-red-50 border-red-100"
@@ -314,7 +328,7 @@ export default function Estoque() {
                         valor={produto.fornecedor || "-"}
                       />
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
 
@@ -333,7 +347,9 @@ export default function Estoque() {
 
 function ResumoCard({ titulo, valor, descricao, destaque, verde }) {
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
       className={`rounded-3xl p-6 shadow-sm border ${
         destaque
           ? "bg-[#1d3557] border-[#1d3557] text-white"
@@ -367,7 +383,7 @@ function ResumoCard({ titulo, valor, descricao, destaque, verde }) {
       >
         {descricao}
       </p>
-    </div>
+    </motion.div>
   );
 }
 
