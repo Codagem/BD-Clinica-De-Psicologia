@@ -26,9 +26,6 @@ A estrutura foi planejada para atender tanto a parte clínica quanto a administr
 Além das tabelas relacionais, o projeto também utiliza procedures, functions, triggers e views para automatizar processos, validar dados e facilitar a geração de relatórios.
 </p>
 
-<p align="center">
-<img width="600" alt="WhatsApp Image 2026-05-26 at 15 52 33" src="https://github.com/user-attachments/assets/c212f376-6ce8-4a49-b493-f9702fcc5fe7" />
-</p>
 <hr>
 
 <h2>🗂️ Estrutura das Tabelas</h2>
