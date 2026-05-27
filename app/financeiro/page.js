@@ -3,6 +3,14 @@
 import Protegido from "../components/Protegido";
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
+import { motion } from "framer-motion";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  Tooltip,
+} from "recharts";
 
 export default function Financeiro() {
   const [dados, setDados] = useState({
@@ -41,6 +49,21 @@ export default function Financeiro() {
 
     return "bg-[#e8eadf] text-[#1d3557]";
   }
+
+  const dadosGrafico = [
+    {
+      nome: "Receitas",
+      valor: Number(dados.resumo.total_receitas || 0),
+    },
+    {
+      nome: "Despesas",
+      valor: Number(dados.resumo.total_despesas || 0),
+    },
+    {
+      nome: "Lucro",
+      valor: Number(dados.resumo.lucro_liquido || 0),
+    },
+  ];
 
   return (
     <Protegido>
@@ -82,6 +105,47 @@ export default function Financeiro() {
               descricao="Resultado financeiro"
               destaque
             />
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-10">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-[#1d3557]">
+                Resumo financeiro
+              </h2>
+
+              <p className="text-gray-500 text-sm mt-1">
+                Visão rápida de receitas, despesas e lucro líquido.
+              </p>
+            </div>
+
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dadosGrafico}>
+                  <XAxis
+                    dataKey="nome"
+                    axisLine={false}
+                    tickLine={false}
+                  />
+
+                  <Tooltip
+                    cursor={{ fill: "transparent" }}
+                    formatter={(value) => formatarValor(value)}
+                    contentStyle={{
+                      borderRadius: "16px",
+                      border: "none",
+                      background: "#1d3557",
+                      color: "#fff",
+                    }}
+                  />
+
+                  <Bar
+                    dataKey="valor"
+                    fill="#1d3557"
+                    radius={[14, 14, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10">
@@ -154,8 +218,10 @@ export default function Financeiro() {
 
             <div className="md:hidden p-4 space-y-4">
               {dados.pagamentos.map((pagamento) => (
-                <div
+                <motion.div
                   key={pagamento.id_pagamento}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
                   className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-4 mb-4">
@@ -189,7 +255,7 @@ export default function Financeiro() {
                       valor={formatarData(pagamento.data_pagamento)}
                     />
                   </div>
-                </div>
+                </motion.div>
               ))}
 
               {dados.pagamentos.length === 0 && (
@@ -259,8 +325,10 @@ export default function Financeiro() {
 
             <div className="md:hidden p-4 space-y-4">
               {dados.despesas.map((despesa) => (
-                <div
+                <motion.div
                   key={despesa.id_despesa}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
                   className="bg-[#fbfaf7] rounded-3xl p-5 border border-red-100 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-4 mb-4">
@@ -287,7 +355,7 @@ export default function Financeiro() {
                       valor={formatarData(despesa.data_despesa)}
                     />
                   </div>
-                </div>
+                </motion.div>
               ))}
 
               {dados.despesas.length === 0 && (
@@ -305,7 +373,9 @@ export default function Financeiro() {
 
 function ResumoCard({ titulo, valor, descricao, destaque, vermelho }) {
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
       className={`rounded-3xl p-6 shadow-sm border ${
         destaque
           ? "bg-[#1d3557] border-[#1d3557] text-white"
@@ -339,7 +409,7 @@ function ResumoCard({ titulo, valor, descricao, destaque, vermelho }) {
       >
         {descricao}
       </p>
-    </div>
+    </motion.div>
   );
 }
 
