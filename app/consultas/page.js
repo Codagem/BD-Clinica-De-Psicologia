@@ -1,5 +1,6 @@
 "use client";
 
+import toast from "react-hot-toast";
 import Protegido from "../components/Protegido";
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
@@ -10,7 +11,6 @@ import {
   User,
   Video,
   MapPin,
-  ClipboardList,
 } from "lucide-react";
 
 export default function Consultas() {
@@ -32,32 +32,38 @@ export default function Consultas() {
   }
 
   async function cadastrarConsulta() {
-    await fetch("/api/consultas", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        id_paciente: idPaciente,
-        id_psicologo: idPsicologo,
-        data_consulta: dataConsulta,
-        horario,
-        tipo_atendimento: tipoAtendimento,
-        status_consulta: statusConsulta,
-        observacoes,
-      }),
-    });
+    try {
+      await fetch("/api/consultas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id_paciente: idPaciente,
+          id_psicologo: idPsicologo,
+          data_consulta: dataConsulta,
+          horario,
+          tipo_atendimento: tipoAtendimento,
+          status_consulta: statusConsulta,
+          observacoes,
+        }),
+      });
 
-    carregarConsultas();
+      toast.success("Consulta cadastrada com sucesso!");
 
-    setIdPaciente("");
-    setIdPsicologo("");
-    setDataConsulta("");
-    setHorario("");
-    setTipoAtendimento("Presencial");
-    setStatusConsulta("Agendado");
-    setObservacoes("");
-    setMostrarFormulario(false);
+      carregarConsultas();
+
+      setIdPaciente("");
+      setIdPsicologo("");
+      setDataConsulta("");
+      setHorario("");
+      setTipoAtendimento("Presencial");
+      setStatusConsulta("Agendado");
+      setObservacoes("");
+      setMostrarFormulario(false);
+    } catch (error) {
+      toast.error("Erro ao cadastrar consulta.");
+    }
   }
 
   useEffect(() => {
@@ -78,13 +84,23 @@ export default function Consultas() {
     if (status === "Realizado") return "bg-blue-100 text-blue-700";
     if (status === "Cancelado") return "bg-red-100 text-red-700";
     if (status === "Faltou") return "bg-orange-100 text-orange-700";
+
     return "bg-[#e8eadf] text-[#1d3557]";
   }
 
   const totalConsultas = consultas.length;
-  const agendadas = consultas.filter((c) => c.status_consulta === "Agendado").length;
-  const confirmadas = consultas.filter((c) => c.status_consulta === "Confirmado").length;
-  const realizadas = consultas.filter((c) => c.status_consulta === "Realizado").length;
+
+  const agendadas = consultas.filter(
+    (c) => c.status_consulta === "Agendado"
+  ).length;
+
+  const confirmadas = consultas.filter(
+    (c) => c.status_consulta === "Confirmado"
+  ).length;
+
+  const realizadas = consultas.filter(
+    (c) => c.status_consulta === "Realizado"
+  ).length;
 
   const consultasOrdenadas = [...consultas].sort((a, b) => {
     const dataA = `${a.data_consulta || ""} ${a.horario || ""}`;
@@ -231,6 +247,7 @@ export default function Consultas() {
                     <div className="flex items-start gap-4">
                       <div className="w-16 h-16 rounded-3xl bg-[#1d3557] text-white flex flex-col items-center justify-center">
                         <Clock size={18} />
+
                         <span className="text-sm font-bold mt-1">
                           {formatarHora(consulta.horario)}
                         </span>
@@ -360,7 +377,9 @@ export default function Consultas() {
 
                       <td className="p-4">{formatarHora(consulta.horario)}</td>
 
-                      <td className="p-4">{consulta.tipo_atendimento || "-"}</td>
+                      <td className="p-4">
+                        {consulta.tipo_atendimento || "-"}
+                      </td>
 
                       <td className="p-4">
                         <span
@@ -460,7 +479,9 @@ function ResumoCard({ titulo, valor, destaque }) {
         {titulo}
       </p>
 
-      <h2 className="text-3xl font-bold mt-2">{valor}</h2>
+      <h2 className="text-3xl font-bold mt-2">
+        {valor}
+      </h2>
     </motion.div>
   );
 }
