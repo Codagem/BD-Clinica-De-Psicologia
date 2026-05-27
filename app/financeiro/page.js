@@ -25,6 +25,9 @@ export default function Financeiro() {
   const [mostrarPagamento, setMostrarPagamento] = useState(false);
   const [mostrarDespesa, setMostrarDespesa] = useState(false);
 
+  const [editandoPagamentoId, setEditandoPagamentoId] = useState(null);
+  const [editandoDespesaId, setEditandoDespesaId] = useState(null);
+
   const [idConsulta, setIdConsulta] = useState("");
   const [valorPagamento, setValorPagamento] = useState("");
   const [formaPagamento, setFormaPagamento] = useState("Pix");
@@ -53,15 +56,40 @@ export default function Financeiro() {
     }
   }
 
+  function formatarDataInput(data) {
+    if (!data) return "";
+    return String(data).slice(0, 10);
+  }
+
+  function limparPagamento() {
+    setEditandoPagamentoId(null);
+    setIdConsulta("");
+    setValorPagamento("");
+    setFormaPagamento("Pix");
+    setStatusPagamento("Pago");
+    setDataPagamento("");
+    setMostrarPagamento(false);
+  }
+
+  function limparDespesa() {
+    setEditandoDespesaId(null);
+    setDescricao("");
+    setCategoria("");
+    setValorDespesa("");
+    setDataDespesa("");
+    setMostrarDespesa(false);
+  }
+
   async function cadastrarPagamento() {
     try {
       const resposta = await fetch("/api/financeiro", {
-        method: "POST",
+        method: editandoPagamentoId ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           tipo: "pagamento",
+          id: editandoPagamentoId,
           id_consulta: Number(idConsulta),
           valor: Number(valorPagamento),
           forma_pagamento: formaPagamento,
@@ -77,30 +105,29 @@ export default function Financeiro() {
         return;
       }
 
-      toast.success("Pagamento cadastrado com sucesso!");
+      toast.success(
+        editandoPagamentoId
+          ? "Pagamento atualizado com sucesso!"
+          : "Pagamento cadastrado com sucesso!"
+      );
 
-      setIdConsulta("");
-      setValorPagamento("");
-      setFormaPagamento("Pix");
-      setStatusPagamento("Pago");
-      setDataPagamento("");
-      setMostrarPagamento(false);
-
+      limparPagamento();
       carregarFinanceiro();
     } catch (error) {
-      toast.error("Erro ao cadastrar pagamento.");
+      toast.error("Erro ao salvar pagamento.");
     }
   }
 
   async function cadastrarDespesa() {
     try {
       const resposta = await fetch("/api/financeiro", {
-        method: "POST",
+        method: editandoDespesaId ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           tipo: "despesa",
+          id: editandoDespesaId,
           descricao,
           categoria,
           valor: Number(valorDespesa),
@@ -115,17 +142,97 @@ export default function Financeiro() {
         return;
       }
 
-      toast.success("Despesa cadastrada com sucesso!");
+      toast.success(
+        editandoDespesaId
+          ? "Despesa atualizada com sucesso!"
+          : "Despesa cadastrada com sucesso!"
+      );
 
-      setDescricao("");
-      setCategoria("");
-      setValorDespesa("");
-      setDataDespesa("");
-      setMostrarDespesa(false);
-
+      limparDespesa();
       carregarFinanceiro();
     } catch (error) {
-      toast.error("Erro ao cadastrar despesa.");
+      toast.error("Erro ao salvar despesa.");
+    }
+  }
+
+  function editarPagamento(pagamento) {
+    setEditandoPagamentoId(pagamento.id_pagamento);
+    setIdConsulta(pagamento.id_consulta || "");
+    setValorPagamento(pagamento.valor || "");
+    setFormaPagamento(pagamento.forma_pagamento || "Pix");
+    setStatusPagamento(pagamento.status_pagamento || "Pago");
+    setDataPagamento(formatarDataInput(pagamento.data_pagamento));
+    setMostrarPagamento(true);
+    setMostrarDespesa(false);
+  }
+
+  function editarDespesa(despesa) {
+    setEditandoDespesaId(despesa.id_despesa);
+    setDescricao(despesa.descricao || "");
+    setCategoria(despesa.categoria || "");
+    setValorDespesa(despesa.valor || "");
+    setDataDespesa(formatarDataInput(despesa.data_despesa));
+    setMostrarDespesa(true);
+    setMostrarPagamento(false);
+  }
+
+  async function excluirPagamento(id) {
+    const confirmar = confirm("Deseja realmente excluir este pagamento?");
+    if (!confirmar) return;
+
+    try {
+      const resposta = await fetch("/api/financeiro", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tipo: "pagamento",
+          id,
+        }),
+      });
+
+      const resultado = await resposta.json();
+
+      if (resultado.erro) {
+        toast.error(resultado.erro);
+        return;
+      }
+
+      toast.success("Pagamento excluído com sucesso!");
+      carregarFinanceiro();
+    } catch (error) {
+      toast.error("Erro ao excluir pagamento.");
+    }
+  }
+
+  async function excluirDespesa(id) {
+    const confirmar = confirm("Deseja realmente excluir esta despesa?");
+    if (!confirmar) return;
+
+    try {
+      const resposta = await fetch("/api/financeiro", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tipo: "despesa",
+          id,
+        }),
+      });
+
+      const resultado = await resposta.json();
+
+      if (resultado.erro) {
+        toast.error(resultado.erro);
+        return;
+      }
+
+      toast.success("Despesa excluída com sucesso!");
+      carregarFinanceiro();
+    } catch (error) {
+      toast.error("Erro ao excluir despesa.");
     }
   }
 
@@ -239,7 +346,7 @@ export default function Financeiro() {
               className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8"
             >
               <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
-                Novo Pagamento
+                {editandoPagamentoId ? "Editar Pagamento" : "Novo Pagamento"}
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
@@ -300,12 +407,23 @@ export default function Financeiro() {
                 />
               </div>
 
-              <button
-                onClick={cadastrarPagamento}
-                className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl mt-5 shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
-              >
-                Salvar Pagamento
-              </button>
+              <div className="flex flex-col md:flex-row gap-3 mt-5">
+                <button
+                  onClick={cadastrarPagamento}
+                  className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
+                >
+                  {editandoPagamentoId
+                    ? "Atualizar Pagamento"
+                    : "Salvar Pagamento"}
+                </button>
+
+                <button
+                  onClick={limparPagamento}
+                  className="bg-[#f3f1eb] text-[#1d3557] px-6 py-3 rounded-2xl hover:bg-gray-200 transition"
+                >
+                  Cancelar
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -316,7 +434,7 @@ export default function Financeiro() {
               className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8"
             >
               <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
-                Nova Despesa
+                {editandoDespesaId ? "Editar Despesa" : "Nova Despesa"}
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -353,12 +471,21 @@ export default function Financeiro() {
                 />
               </div>
 
-              <button
-                onClick={cadastrarDespesa}
-                className="bg-red-500 text-white px-6 py-3 rounded-2xl mt-5 shadow hover:bg-red-600 hover:scale-[1.02] active:scale-[0.98] transition"
-              >
-                Salvar Despesa
-              </button>
+              <div className="flex flex-col md:flex-row gap-3 mt-5">
+                <button
+                  onClick={cadastrarDespesa}
+                  className="bg-red-500 text-white px-6 py-3 rounded-2xl shadow hover:bg-red-600 hover:scale-[1.02] active:scale-[0.98] transition"
+                >
+                  {editandoDespesaId ? "Atualizar Despesa" : "Salvar Despesa"}
+                </button>
+
+                <button
+                  onClick={limparDespesa}
+                  className="bg-[#f3f1eb] text-[#1d3557] px-6 py-3 rounded-2xl hover:bg-gray-200 transition"
+                >
+                  Cancelar
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -465,7 +592,7 @@ export default function Financeiro() {
             </div>
 
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full min-w-[800px]">
+              <table className="w-full min-w-[950px]">
                 <thead className="bg-[#f3f1eb] text-[#1d3557]">
                   <tr>
                     <th className="text-left p-4">Paciente</th>
@@ -473,6 +600,7 @@ export default function Financeiro() {
                     <th className="text-left p-4">Forma</th>
                     <th className="text-left p-4">Status</th>
                     <th className="text-left p-4">Data</th>
+                    <th className="text-left p-4">Ações</th>
                   </tr>
                 </thead>
 
@@ -507,12 +635,32 @@ export default function Financeiro() {
                       <td className="p-4">
                         {formatarData(pagamento.data_pagamento)}
                       </td>
+
+                      <td className="p-4">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => editarPagamento(pagamento)}
+                            className="bg-[#1d3557] text-white px-4 py-2 rounded-xl font-medium hover:opacity-90 transition"
+                          >
+                            Editar
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              excluirPagamento(pagamento.id_pagamento)
+                            }
+                            className="bg-red-500 text-white px-4 py-2 rounded-xl font-medium hover:bg-red-600 transition"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
 
                   {dados.pagamentos.length === 0 && (
                     <tr>
-                      <td colSpan="5" className="p-8 text-center text-gray-500">
+                      <td colSpan="6" className="p-8 text-center text-gray-500">
                         Nenhum pagamento encontrado.
                       </td>
                     </tr>
@@ -560,6 +708,22 @@ export default function Financeiro() {
                       valor={formatarData(pagamento.data_pagamento)}
                     />
                   </div>
+
+                  <div className="grid grid-cols-2 gap-3 mt-5">
+                    <button
+                      onClick={() => editarPagamento(pagamento)}
+                      className="bg-[#1d3557] text-white py-3 rounded-2xl font-semibold"
+                    >
+                      Editar
+                    </button>
+
+                    <button
+                      onClick={() => excluirPagamento(pagamento.id_pagamento)}
+                      className="bg-red-500 text-white py-3 rounded-2xl font-semibold"
+                    >
+                      Excluir
+                    </button>
+                  </div>
                 </motion.div>
               ))}
 
@@ -583,13 +747,14 @@ export default function Financeiro() {
             </div>
 
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full min-w-[900px]">
+              <table className="w-full min-w-[1000px]">
                 <thead className="bg-[#f3f1eb] text-[#1d3557]">
                   <tr>
                     <th className="text-left p-4">Descrição</th>
                     <th className="text-left p-4">Categoria</th>
                     <th className="text-left p-4">Valor</th>
                     <th className="text-left p-4">Data</th>
+                    <th className="text-left p-4">Ações</th>
                   </tr>
                 </thead>
 
@@ -614,12 +779,30 @@ export default function Financeiro() {
                       <td className="p-4">
                         {formatarData(despesa.data_despesa)}
                       </td>
+
+                      <td className="p-4">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => editarDespesa(despesa)}
+                            className="bg-[#1d3557] text-white px-4 py-2 rounded-xl font-medium hover:opacity-90 transition"
+                          >
+                            Editar
+                          </button>
+
+                          <button
+                            onClick={() => excluirDespesa(despesa.id_despesa)}
+                            className="bg-red-500 text-white px-4 py-2 rounded-xl font-medium hover:bg-red-600 transition"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
 
                   {dados.despesas.length === 0 && (
                     <tr>
-                      <td colSpan="4" className="p-8 text-center text-gray-500">
+                      <td colSpan="5" className="p-8 text-center text-gray-500">
                         Nenhuma despesa encontrada.
                       </td>
                     </tr>
@@ -659,6 +842,22 @@ export default function Financeiro() {
                       label="Data"
                       valor={formatarData(despesa.data_despesa)}
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mt-5">
+                    <button
+                      onClick={() => editarDespesa(despesa)}
+                      className="bg-[#1d3557] text-white py-3 rounded-2xl font-semibold"
+                    >
+                      Editar
+                    </button>
+
+                    <button
+                      onClick={() => excluirDespesa(despesa.id_despesa)}
+                      className="bg-red-500 text-white py-3 rounded-2xl font-semibold"
+                    >
+                      Excluir
+                    </button>
                   </div>
                 </motion.div>
               ))}
