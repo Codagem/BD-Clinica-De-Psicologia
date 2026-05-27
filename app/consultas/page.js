@@ -25,7 +25,9 @@ export default function Consultas() {
   async function cadastrarConsulta() {
     await fetch("/api/consultas", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         id_paciente: idPaciente,
         id_psicologo: idPsicologo,
@@ -71,9 +73,18 @@ export default function Consultas() {
   }
 
   const totalConsultas = consultas.length;
-  const agendadas = consultas.filter((c) => c.status_consulta === "Agendado").length;
-  const confirmadas = consultas.filter((c) => c.status_consulta === "Confirmado").length;
-  const realizadas = consultas.filter((c) => c.status_consulta === "Realizado").length;
+
+  const agendadas = consultas.filter(
+    (consulta) => consulta.status_consulta === "Agendado"
+  ).length;
+
+  const confirmadas = consultas.filter(
+    (consulta) => consulta.status_consulta === "Confirmado"
+  ).length;
+
+  const realizadas = consultas.filter(
+    (consulta) => consulta.status_consulta === "Realizado"
+  ).length;
 
   return (
     <Protegido>
@@ -83,11 +94,16 @@ export default function Consultas() {
         <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <div>
+              <p className="text-[#2b4c7e] font-semibold mb-2">
+                Agenda clínica
+              </p>
+
               <h1 className="text-3xl md:text-4xl font-bold text-[#1d3557]">
                 Consultas
               </h1>
-              <p className="text-gray-500 mt-1">
-                Gerencie os atendimentos da clínica de forma organizada.
+
+              <p className="text-gray-500 mt-2">
+                Gerencie os atendimentos, horários e status da clínica.
               </p>
             </div>
 
@@ -100,25 +116,10 @@ export default function Consultas() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
-              <p className="text-gray-500 text-sm">Total de consultas</p>
-              <h2 className="text-3xl font-bold text-[#1d3557] mt-2">{totalConsultas}</h2>
-            </div>
-
-            <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
-              <p className="text-gray-500 text-sm">Agendadas</p>
-              <h2 className="text-3xl font-bold text-[#1d3557] mt-2">{agendadas}</h2>
-            </div>
-
-            <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
-              <p className="text-gray-500 text-sm">Confirmadas</p>
-              <h2 className="text-3xl font-bold text-[#1d3557] mt-2">{confirmadas}</h2>
-            </div>
-
-            <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100">
-              <p className="text-gray-500 text-sm">Realizadas</p>
-              <h2 className="text-3xl font-bold text-[#1d3557] mt-2">{realizadas}</h2>
-            </div>
+            <ResumoCard titulo="Total de consultas" valor={totalConsultas} />
+            <ResumoCard titulo="Agendadas" valor={agendadas} />
+            <ResumoCard titulo="Confirmadas" valor={confirmadas} />
+            <ResumoCard titulo="Realizadas" valor={realizadas} destaque />
           </div>
 
           {mostrarFormulario && (
@@ -199,15 +200,16 @@ export default function Consultas() {
 
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-[#1d3557]">
+              <h2 className="text-2xl font-bold text-[#1d3557]">
                 Lista de Consultas
               </h2>
-              <p className="text-gray-500 text-sm">
+
+              <p className="text-gray-500 text-sm mt-1">
                 Visualize todos os atendimentos cadastrados.
               </p>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[1000px]">
                 <thead className="bg-[#f3f1eb] text-[#1d3557]">
                   <tr>
@@ -227,11 +229,26 @@ export default function Consultas() {
                       key={consulta.id_consulta}
                       className="border-b border-gray-100 hover:bg-[#fbfaf7] transition"
                     >
-                      <td className="p-4 font-medium">{consulta.paciente}</td>
-                      <td className="p-4">{consulta.psicologo}</td>
-                      <td className="p-4">{formatarData(consulta.data_consulta)}</td>
-                      <td className="p-4">{formatarHora(consulta.horario)}</td>
-                      <td className="p-4">{consulta.tipo_atendimento}</td>
+                      <td className="p-4 font-medium">
+                        {consulta.paciente || "-"}
+                      </td>
+
+                      <td className="p-4">
+                        {consulta.psicologo || "-"}
+                      </td>
+
+                      <td className="p-4">
+                        {formatarData(consulta.data_consulta)}
+                      </td>
+
+                      <td className="p-4">
+                        {formatarHora(consulta.horario)}
+                      </td>
+
+                      <td className="p-4">
+                        {consulta.tipo_atendimento || "-"}
+                      </td>
+
                       <td className="p-4">
                         <span
                           className={`px-3 py-1 rounded-full text-sm font-medium ${corStatus(
@@ -241,6 +258,7 @@ export default function Consultas() {
                           {consulta.status_consulta}
                         </span>
                       </td>
+
                       <td className="p-4 text-gray-600">
                         {consulta.observacoes || "-"}
                       </td>
@@ -257,9 +275,92 @@ export default function Consultas() {
                 </tbody>
               </table>
             </div>
+
+            <div className="md:hidden p-4 space-y-4">
+              {consultas.map((consulta) => (
+                <div
+                  key={consulta.id_consulta}
+                  className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-[#1d3557] text-white flex items-center justify-center font-bold">
+                        {formatarHora(consulta.horario)}
+                      </div>
+
+                      <div>
+                        <h3 className="font-bold text-[#1d3557]">
+                          {consulta.paciente || "Paciente"}
+                        </h3>
+
+                        <p className="text-xs text-gray-500">
+                          {formatarData(consulta.data_consulta)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${corStatus(
+                        consulta.status_consulta
+                      )}`}
+                    >
+                      {consulta.status_consulta}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <Info label="Psicólogo" valor={consulta.psicologo || "-"} />
+                    <Info label="Tipo" valor={consulta.tipo_atendimento || "-"} />
+                    <Info
+                      label="Observações"
+                      valor={consulta.observacoes || "-"}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {consultas.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  Nenhuma consulta cadastrada ainda.
+                </div>
+              )}
+            </div>
           </div>
         </main>
       </div>
     </Protegido>
+  );
+}
+
+function ResumoCard({ titulo, valor, destaque }) {
+  return (
+    <div
+      className={`rounded-3xl p-5 shadow-sm border ${
+        destaque
+          ? "bg-[#1d3557] border-[#1d3557] text-white"
+          : "bg-white border-gray-100 text-[#1d3557]"
+      }`}
+    >
+      <p
+        className={`text-sm ${
+          destaque ? "text-blue-100" : "text-gray-500"
+        }`}
+      >
+        {titulo}
+      </p>
+
+      <h2 className="text-3xl font-bold mt-2">
+        {valor}
+      </h2>
+    </div>
+  );
+}
+
+function Info({ label, valor }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-2">
+      <span className="text-gray-500">{label}</span>
+      <span className="text-[#1d3557] font-medium text-right">{valor}</span>
+    </div>
   );
 }
