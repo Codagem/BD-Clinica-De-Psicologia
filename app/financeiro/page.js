@@ -12,12 +12,8 @@ export default function Financeiro() {
   });
 
   async function carregarFinanceiro() {
-    const resposta = await fetch(
-      "/api/financeiro"
-    );
-
+    const resposta = await fetch("/api/financeiro");
     const resultado = await resposta.json();
-
     setDados(resultado);
   }
 
@@ -26,216 +22,302 @@ export default function Financeiro() {
   }, []);
 
   function formatarData(data) {
+    if (!data) return "-";
+
     return new Date(data).toLocaleDateString("pt-BR");
   }
 
+  function formatarValor(valor) {
+    return Number(valor || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  }
+
+  function corStatus(status) {
+    if (status === "Pago")
+      return "bg-green-100 text-green-700";
+
+    if (status === "Pendente")
+      return "bg-yellow-100 text-yellow-700";
+
+    if (status === "Cancelado")
+      return "bg-red-100 text-red-700";
+
+    return "bg-[#e8eadf] text-[#1d3557]";
+  }
+
   return (
-
     <Protegido>
-
-      <div className="flex bg-gray-100 min-h-screen">
-
+      <div className="flex min-h-screen bg-[#fbfaf7]">
         <Sidebar />
 
         <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
 
-          <h1 className="text-4xl font-bold text-black mb-10">
-            Financeiro
-          </h1>
+          <div className="mb-10">
+
+            <h1 className="text-3xl md:text-4xl font-bold text-[#1d3557]">
+              Financeiro
+            </h1>
+
+            <p className="text-gray-500 mt-2">
+              Controle financeiro da clínica de psicologia.
+            </p>
+
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
 
-            <div className="bg-white p-6 rounded-2xl shadow">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
 
-              <h2 className="text-gray-500">
+              <p className="text-gray-500 text-sm">
                 Receitas
+              </p>
+
+              <h2 className="text-3xl md:text-4xl font-bold text-[#1d3557] mt-3">
+                {formatarValor(dados.resumo.total_receitas)}
               </h2>
 
-              <p className="text-4xl font-bold text-black mt-4">
-                R$ {dados.resumo.total_receitas || 0}
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+
+              <p className="text-gray-500 text-sm">
+                Despesas
+              </p>
+
+              <h2 className="text-3xl md:text-4xl font-bold text-red-500 mt-3">
+                {formatarValor(dados.resumo.total_despesas)}
+              </h2>
+
+            </div>
+
+            <div className="bg-[#1d3557] p-6 rounded-3xl shadow-sm">
+
+              <p className="text-blue-100 text-sm">
+                Lucro Líquido
+              </p>
+
+              <h2 className="text-3xl md:text-4xl font-bold text-white mt-3">
+                {formatarValor(dados.resumo.lucro_liquido)}
+              </h2>
+
+            </div>
+
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10">
+
+            <div className="p-6 border-b border-gray-100">
+
+              <h2 className="text-2xl font-bold text-[#1d3557]">
+                Pagamentos
+              </h2>
+
+              <p className="text-gray-500 text-sm mt-1">
+                Histórico de pagamentos recebidos.
               </p>
 
             </div>
 
-            <div className="bg-white p-6 rounded-2xl shadow">
+            <div className="overflow-x-auto">
 
-              <h2 className="text-gray-500">
+              <table className="w-full min-w-[800px]">
+
+                <thead className="bg-[#f3f1eb] text-[#1d3557]">
+
+                  <tr>
+
+                    <th className="text-left p-4">
+                      Paciente
+                    </th>
+
+                    <th className="text-left p-4">
+                      Valor
+                    </th>
+
+                    <th className="text-left p-4">
+                      Forma
+                    </th>
+
+                    <th className="text-left p-4">
+                      Status
+                    </th>
+
+                    <th className="text-left p-4">
+                      Data
+                    </th>
+
+                  </tr>
+
+                </thead>
+
+                <tbody className="text-black">
+
+                  {dados.pagamentos.map((pagamento) => (
+
+                    <tr
+                      key={pagamento.id_pagamento}
+                      className="border-b border-gray-100 hover:bg-[#fbfaf7] transition"
+                    >
+
+                      <td className="p-4 font-medium">
+                        {pagamento.paciente}
+                      </td>
+
+                      <td className="p-4">
+                        {formatarValor(pagamento.valor)}
+                      </td>
+
+                      <td className="p-4">
+                        {pagamento.forma_pagamento}
+                      </td>
+
+                      <td className="p-4">
+
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${corStatus(
+                            pagamento.status_pagamento
+                          )}`}
+                        >
+
+                          {pagamento.status_pagamento}
+
+                        </span>
+
+                      </td>
+
+                      <td className="p-4">
+                        {formatarData(pagamento.data_pagamento)}
+                      </td>
+
+                    </tr>
+
+                  ))}
+
+                  {dados.pagamentos.length === 0 && (
+
+                    <tr>
+
+                      <td
+                        colSpan="5"
+                        className="p-8 text-center text-gray-500"
+                      >
+
+                        Nenhum pagamento encontrado.
+
+                      </td>
+
+                    </tr>
+
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+
+            <div className="p-6 border-b border-gray-100">
+
+              <h2 className="text-2xl font-bold text-[#1d3557]">
                 Despesas
               </h2>
 
-              <p className="text-4xl font-bold text-black mt-4">
-                R$ {dados.resumo.total_despesas || 0}
+              <p className="text-gray-500 text-sm mt-1">
+                Controle de gastos da clínica.
               </p>
 
             </div>
 
-            <div className="bg-black p-6 rounded-2xl shadow">
+            <div className="overflow-x-auto">
 
-              <h2 className="text-gray-300">
-                Lucro Líquido
-              </h2>
+              <table className="w-full min-w-[900px]">
 
-              <p className="text-4xl font-bold text-white mt-4">
-                R$ {dados.resumo.lucro_liquido || 0}
-              </p>
+                <thead className="bg-[#f3f1eb] text-[#1d3557]">
 
-            </div>
+                  <tr>
 
-          </div>
+                    <th className="text-left p-4">
+                      Descrição
+                    </th>
 
-          <div className="bg-white rounded-2xl shadow overflow-hidden mb-10">
+                    <th className="text-left p-4">
+                      Categoria
+                    </th>
 
-            <div className="bg-black text-white p-4 text-xl font-bold">
-              Pagamentos
-            </div>
+                    <th className="text-left p-4">
+                      Valor
+                    </th>
 
-            <table className="w-full">
-
-              <thead className="bg-gray-200 text-black">
-
-                <tr>
-
-                  <th className="text-left p-4">
-                    Paciente
-                  </th>
-
-                  <th className="text-left p-4">
-                    Valor
-                  </th>
-
-                  <th className="text-left p-4">
-                    Forma
-                  </th>
-
-                  <th className="text-left p-4">
-                    Status
-                  </th>
-
-                  <th className="text-left p-4">
-                    Data
-                  </th>
-
-                </tr>
-
-              </thead>
-
-              <tbody className="text-black">
-
-                {dados.pagamentos.map((pagamento) => (
-
-                  <tr
-                    key={pagamento.id_pagamento}
-                    className="border-b"
-                  >
-
-                    <td className="p-4">
-                      {pagamento.paciente}
-                    </td>
-
-                    <td className="p-4">
-                      R$ {pagamento.valor}
-                    </td>
-
-                    <td className="p-4">
-                      {pagamento.forma_pagamento}
-                    </td>
-
-                    <td className="p-4">
-
-                      <span className="bg-gray-200 px-3 py-1 rounded-full">
-
-                        {pagamento.status_pagamento}
-
-                      </span>
-
-                    </td>
-
-                    <td className="p-4">
-                      {formatarData(pagamento.data_pagamento)}
-                    </td>
+                    <th className="text-left p-4">
+                      Data
+                    </th>
 
                   </tr>
 
-                ))}
+                </thead>
 
-              </tbody>
+                <tbody className="text-black">
 
-            </table>
+                  {dados.despesas.map((despesa) => (
 
-          </div>
+                    <tr
+                      key={despesa.id_despesa}
+                      className="border-b border-gray-100 hover:bg-[#fbfaf7] transition"
+                    >
 
-          <div className="bg-white rounded-2xl shadow overflow-x-auto">
+                      <td className="p-4 font-medium">
+                        {despesa.descricao}
+                      </td>
 
-            <div className="bg-black text-white p-4 text-xl font-bold">
-              Despesas
+                      <td className="p-4">
+                        {despesa.categoria}
+                      </td>
+
+                      <td className="p-4 text-red-500 font-semibold">
+                        {formatarValor(despesa.valor)}
+                      </td>
+
+                      <td className="p-4">
+                        {formatarData(despesa.data_despesa)}
+                      </td>
+
+                    </tr>
+
+                  ))}
+
+                  {dados.despesas.length === 0 && (
+
+                    <tr>
+
+                      <td
+                        colSpan="4"
+                        className="p-8 text-center text-gray-500"
+                      >
+
+                        Nenhuma despesa encontrada.
+
+                      </td>
+
+                    </tr>
+
+                  )}
+
+                </tbody>
+
+              </table>
+
             </div>
-
-            <table className="w-full min-w-[1000px]">
-
-              <thead className="bg-gray-200 text-black">
-
-                <tr>
-
-                  <th className="text-left p-4">
-                    Descrição
-                  </th>
-
-                  <th className="text-left p-4">
-                    Categoria
-                  </th>
-
-                  <th className="text-left p-4">
-                    Valor
-                  </th>
-
-                  <th className="text-left p-4">
-                    Data
-                  </th>
-
-                </tr>
-
-              </thead>
-
-              <tbody className="text-black">
-
-                {dados.despesas.map((despesa) => (
-
-                  <tr
-                    key={despesa.id_despesa}
-                    className="border-b"
-                  >
-
-                    <td className="p-4">
-                      {despesa.descricao}
-                    </td>
-
-                    <td className="p-4">
-                      {despesa.categoria}
-                    </td>
-
-                    <td className="p-4">
-                      R$ {despesa.valor}
-                    </td>
-
-                    <td className="p-4">
-                      {formatarData(despesa.data_despesa)}
-                    </td>
-
-                  </tr>
-
-                ))}
-
-              </tbody>
-
-            </table>
 
           </div>
 
         </main>
-
       </div>
-
     </Protegido>
-
   );
 }

@@ -45,9 +45,7 @@ export default function Pacientes() {
     if (editandoId) {
       await fetch("/api/pacientes", {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: editandoId,
           nome_completo: nome,
@@ -59,9 +57,7 @@ export default function Pacientes() {
     } else {
       await fetch("/api/pacientes", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nome_completo: nome,
           cpf,
@@ -81,9 +77,7 @@ export default function Pacientes() {
 
     await fetch("/api/pacientes", {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
 
@@ -118,17 +112,17 @@ export default function Pacientes() {
 
   return (
     <Protegido>
-      <div className="min-h-screen bg-[#fbfaf7] overflow-x-hidden">
+      <div className="flex min-h-screen bg-[#fbfaf7]">
         <Sidebar />
 
-        <main className="md:ml-72 p-4 pt-20 md:p-10 md:w-[calc(100%-18rem)]">
+        <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-8">
             <div>
               <p className="text-[#2b4c7e] font-semibold mb-2">
                 Gestão de pacientes
               </p>
 
-              <h1 className="text-3xl md:text-4xl font-serif text-[#1d3557]">
+              <h1 className="text-3xl md:text-4xl font-bold text-[#1d3557]">
                 Pacientes
               </h1>
 
@@ -139,38 +133,38 @@ export default function Pacientes() {
 
             <button
               onClick={() => setMostrarFormulario(!mostrarFormulario)}
-              className="bg-[#1d3557] text-white px-5 py-3 rounded-2xl hover:bg-[#16304d] transition shadow-sm"
+              className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 transition"
             >
               + Novo Paciente
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-            <div className="bg-white rounded-3xl p-6 border border-black/5 shadow-sm">
-              <p className="text-gray-500">Total de pacientes</p>
-              <h2 className="text-4xl font-bold text-[#1d3557] mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+              <p className="text-gray-500 text-sm">Total de pacientes</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-[#1d3557] mt-3">
                 {pacientes.length}
               </h2>
             </div>
 
-            <div className="bg-white rounded-3xl p-6 border border-black/5 shadow-sm">
-              <p className="text-gray-500">Resultados da busca</p>
-              <h2 className="text-4xl font-bold text-[#1d3557] mt-3">
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+              <p className="text-gray-500 text-sm">Resultados da busca</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-[#1d3557] mt-3">
                 {pacientesFiltrados.length}
               </h2>
             </div>
 
             <div className="bg-[#1d3557] rounded-3xl p-6 shadow-sm">
-              <p className="text-white/70">Status</p>
-              <h2 className="text-2xl font-bold text-white mt-3">
+              <p className="text-blue-100 text-sm">Status</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-white mt-3">
                 Base ativa
               </h2>
             </div>
           </div>
 
           {mostrarFormulario && (
-            <div className="bg-white p-6 rounded-[30px] shadow-sm border border-black/5 mb-8">
-              <h2 className="text-2xl font-serif text-[#1d3557] mb-5">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8">
+              <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
                 {editandoId ? "Editar paciente" : "Novo paciente"}
               </h2>
 
@@ -179,7 +173,7 @@ export default function Pacientes() {
                   type="text"
                   placeholder="Nome completo"
                   value={nome}
-                  className="border border-gray-200 p-4 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
                   onChange={(e) => setNome(e.target.value)}
                 />
 
@@ -187,7 +181,7 @@ export default function Pacientes() {
                   type="text"
                   placeholder="CPF"
                   value={cpf}
-                  className="border border-gray-200 p-4 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
                   onChange={(e) => setCpf(formatarCPF(e.target.value))}
                 />
 
@@ -195,7 +189,7 @@ export default function Pacientes() {
                   type="text"
                   placeholder="Telefone"
                   value={telefone}
-                  className="border border-gray-200 p-4 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
                   onChange={(e) =>
                     setTelefone(formatarTelefone(e.target.value))
                   }
@@ -205,7 +199,7 @@ export default function Pacientes() {
                   type="text"
                   placeholder="Profissão"
                   value={profissao}
-                  className="border border-gray-200 p-4 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
                   onChange={(e) => setProfissao(e.target.value)}
                 />
               </div>
@@ -214,7 +208,7 @@ export default function Pacientes() {
                 <button
                   type="button"
                   onClick={cadastrarPaciente}
-                  className="bg-[#1d3557] text-white px-5 py-3 rounded-2xl hover:bg-[#16304d] transition"
+                  className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 transition"
                 >
                   {editandoId ? "Atualizar paciente" : "Salvar paciente"}
                 </button>
@@ -222,7 +216,7 @@ export default function Pacientes() {
                 <button
                   type="button"
                   onClick={limparFormulario}
-                  className="bg-[#f5f1eb] text-[#1d3557] px-5 py-3 rounded-2xl hover:bg-gray-200 transition"
+                  className="bg-[#f3f1eb] text-[#1d3557] px-6 py-3 rounded-2xl hover:bg-gray-200 transition"
                 >
                   Cancelar
                 </button>
@@ -230,20 +224,30 @@ export default function Pacientes() {
             </div>
           )}
 
-          <div className="bg-white p-5 rounded-[28px] shadow-sm border border-black/5 mb-6">
+          <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
             <input
               type="text"
               placeholder="Pesquisar paciente pelo nome..."
               value={pesquisa}
               onChange={(e) => setPesquisa(e.target.value)}
-              className="border border-gray-200 p-4 rounded-2xl w-full text-black bg-white outline-none focus:border-[#1d3557]"
+              className="border border-gray-200 p-4 rounded-2xl w-full text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
             />
           </div>
 
-          <div className="bg-white rounded-[30px] shadow-sm border border-black/5 overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-2xl font-bold text-[#1d3557]">
+                Lista de Pacientes
+              </h2>
+
+              <p className="text-gray-500 text-sm mt-1">
+                Visualize os pacientes cadastrados na clínica.
+              </p>
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[900px]">
-                <thead className="bg-[#1d3557] text-white">
+                <thead className="bg-[#f3f1eb] text-[#1d3557]">
                   <tr>
                     <th className="text-left p-4">ID</th>
                     <th className="text-left p-4">Paciente</th>
@@ -258,7 +262,7 @@ export default function Pacientes() {
                   {pacientesFiltrados.map((paciente) => (
                     <tr
                       key={paciente.id_paciente}
-                      className="border-b border-gray-100 hover:bg-[#f5f1eb] transition"
+                      className="border-b border-gray-100 hover:bg-[#fbfaf7] transition"
                     >
                       <td className="p-4">{paciente.id_paciente}</td>
 
@@ -272,6 +276,7 @@ export default function Pacientes() {
                             <p className="font-semibold text-[#1d3557]">
                               {paciente.nome_completo}
                             </p>
+
                             <p className="text-xs text-gray-500">
                               Paciente ativo
                             </p>
@@ -284,30 +289,102 @@ export default function Pacientes() {
                       <td className="p-4">{paciente.profissao}</td>
 
                       <td className="p-4">
-                        <button
-                          onClick={() => editarPaciente(paciente)}
-                          className="bg-[#2b4c7e] text-white px-4 py-2 rounded-2xl hover:bg-[#244267] mr-2 transition"
-                        >
-                          Editar
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => editarPaciente(paciente)}
+                            className="bg-[#2b4c7e] text-white px-4 py-2 rounded-2xl hover:opacity-90 transition"
+                          >
+                            Editar
+                          </button>
 
-                        <button
-                          onClick={() =>
-                            deletarPaciente(paciente.id_paciente)
-                          }
-                          className="bg-red-500 text-white px-4 py-2 rounded-2xl hover:bg-red-600 transition"
-                        >
-                          Excluir
-                        </button>
+                          <button
+                            onClick={() =>
+                              deletarPaciente(paciente.id_paciente)
+                            }
+                            className="bg-red-500 text-white px-4 py-2 rounded-2xl hover:bg-red-600 transition"
+                          >
+                            Excluir
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
+
+                  {pacientesFiltrados.length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="p-8 text-center text-gray-500">
+                        Nenhum paciente encontrado.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
+            </div>
+
+            <div className="md:hidden p-4 space-y-4">
+              {pacientesFiltrados.map((paciente) => (
+                <div
+                  key={paciente.id_paciente}
+                  className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10 shadow-sm"
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-2xl bg-[#1d3557]/10 text-[#1d3557] flex items-center justify-center font-bold">
+                      {paciente.nome_completo?.charAt(0)}
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-[#1d3557]">
+                        {paciente.nome_completo}
+                      </h3>
+
+                      <p className="text-xs text-gray-500">
+                        Paciente #{paciente.id_paciente}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <Info label="CPF" valor={paciente.cpf || "-"} />
+                    <Info label="Telefone" valor={paciente.telefone || "-"} />
+                    <Info label="Profissão" valor={paciente.profissao || "-"} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mt-5">
+                    <button
+                      onClick={() => editarPaciente(paciente)}
+                      className="bg-[#2b4c7e] text-white py-3 rounded-2xl hover:opacity-90 transition"
+                    >
+                      Editar
+                    </button>
+
+                    <button
+                      onClick={() => deletarPaciente(paciente.id_paciente)}
+                      className="bg-red-500 text-white py-3 rounded-2xl hover:bg-red-600 transition"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {pacientesFiltrados.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  Nenhum paciente encontrado.
+                </div>
+              )}
             </div>
           </div>
         </main>
       </div>
     </Protegido>
+  );
+}
+
+function Info({ label, valor }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-2">
+      <span className="text-gray-500">{label}</span>
+      <span className="text-[#1d3557] font-medium text-right">{valor}</span>
+    </div>
   );
 }
