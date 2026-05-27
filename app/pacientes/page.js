@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { motion } from "framer-motion";
 import Sidebar from "../components/Sidebar";
 import Protegido from "../components/Protegido";
 
@@ -42,46 +44,59 @@ export default function Pacientes() {
   }
 
   async function cadastrarPaciente() {
-    if (editandoId) {
-      await fetch("/api/pacientes", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editandoId,
-          nome_completo: nome,
-          cpf,
-          telefone,
-          profissao,
-        }),
-      });
-    } else {
-      await fetch("/api/pacientes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome_completo: nome,
-          cpf,
-          telefone,
-          profissao,
-        }),
-      });
-    }
+    try {
+      if (editandoId) {
+        await fetch("/api/pacientes", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editandoId,
+            nome_completo: nome,
+            cpf,
+            telefone,
+            profissao,
+          }),
+        });
 
-    carregarPacientes();
-    limparFormulario();
+        toast.success("Paciente atualizado com sucesso!");
+      } else {
+        await fetch("/api/pacientes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nome_completo: nome,
+            cpf,
+            telefone,
+            profissao,
+          }),
+        });
+
+        toast.success("Paciente cadastrado com sucesso!");
+      }
+
+      carregarPacientes();
+      limparFormulario();
+    } catch (error) {
+      toast.error("Erro ao salvar paciente.");
+    }
   }
 
   async function deletarPaciente(id) {
     const confirmar = confirm("Deseja realmente excluir este paciente?");
     if (!confirmar) return;
 
-    await fetch("/api/pacientes", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
+    try {
+      await fetch("/api/pacientes", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
 
-    carregarPacientes();
+      toast.success("Paciente excluído com sucesso!");
+      carregarPacientes();
+    } catch (error) {
+      toast.error("Erro ao excluir paciente.");
+    }
   }
 
   function editarPaciente(paciente) {
@@ -133,37 +148,24 @@ export default function Pacientes() {
 
             <button
               onClick={() => setMostrarFormulario(!mostrarFormulario)}
-              className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 transition"
+              className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
             >
               + Novo Paciente
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
-            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-              <p className="text-gray-500 text-sm">Total de pacientes</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-[#1d3557] mt-3">
-                {pacientes.length}
-              </h2>
-            </div>
-
-            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-              <p className="text-gray-500 text-sm">Resultados da busca</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-[#1d3557] mt-3">
-                {pacientesFiltrados.length}
-              </h2>
-            </div>
-
-            <div className="bg-[#1d3557] rounded-3xl p-6 shadow-sm">
-              <p className="text-blue-100 text-sm">Status</p>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mt-3">
-                Base ativa
-              </h2>
-            </div>
+            <ResumoCard titulo="Total de pacientes" valor={pacientes.length} />
+            <ResumoCard titulo="Resultados da busca" valor={pacientesFiltrados.length} />
+            <ResumoCard titulo="Status" valor="Base ativa" destaque />
           </div>
 
           {mostrarFormulario && (
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8"
+            >
               <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
                 {editandoId ? "Editar paciente" : "Novo paciente"}
               </h2>
@@ -208,7 +210,7 @@ export default function Pacientes() {
                 <button
                   type="button"
                   onClick={cadastrarPaciente}
-                  className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 transition"
+                  className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
                 >
                   {editandoId ? "Atualizar paciente" : "Salvar paciente"}
                 </button>
@@ -221,7 +223,7 @@ export default function Pacientes() {
                   Cancelar
                 </button>
               </div>
-            </div>
+            </motion.div>
           )}
 
           <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
@@ -323,8 +325,10 @@ export default function Pacientes() {
 
             <div className="md:hidden p-4 space-y-4">
               {pacientesFiltrados.map((paciente) => (
-                <div
+                <motion.div
                   key={paciente.id_paciente}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
                   className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10 shadow-sm"
                 >
                   <div className="flex items-center gap-3 mb-4">
@@ -364,7 +368,7 @@ export default function Pacientes() {
                       Excluir
                     </button>
                   </div>
-                </div>
+                </motion.div>
               ))}
 
               {pacientesFiltrados.length === 0 && (
@@ -377,6 +381,28 @@ export default function Pacientes() {
         </main>
       </div>
     </Protegido>
+  );
+}
+
+function ResumoCard({ titulo, valor, destaque }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`rounded-3xl p-6 shadow-sm border ${
+        destaque
+          ? "bg-[#1d3557] border-[#1d3557] text-white"
+          : "bg-white border-gray-100 text-[#1d3557]"
+      }`}
+    >
+      <p className={`text-sm ${destaque ? "text-blue-100" : "text-gray-500"}`}>
+        {titulo}
+      </p>
+
+      <h2 className="text-3xl md:text-4xl font-bold mt-3">
+        {valor}
+      </h2>
+    </motion.div>
   );
 }
 
