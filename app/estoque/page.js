@@ -9,6 +9,7 @@ import Protegido from "../components/Protegido";
 export default function Estoque() {
   const [produtos, setProdutos] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
 
   const [nome, setNome] = useState("");
   const [categoria, setCategoria] = useState("");
@@ -22,14 +23,17 @@ export default function Estoque() {
     setProdutos(dados);
   }
 
-  async function cadastrarProduto() {
+  async function salvarProduto() {
     try {
+      const metodo = editandoId ? "PUT" : "POST";
+
       await fetch("/api/estoque", {
-        method: "POST",
+        method: metodo,
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          id: editandoId,
           nome,
           categoria,
           quantidade_atual: quantidadeAtual,
@@ -38,19 +42,61 @@ export default function Estoque() {
         }),
       });
 
-      toast.success("Produto cadastrado com sucesso!");
+      toast.success(
+        editandoId
+          ? "Produto atualizado com sucesso!"
+          : "Produto cadastrado com sucesso!"
+      );
 
       carregarProdutos();
-
-      setNome("");
-      setCategoria("");
-      setQuantidadeAtual("");
-      setQuantidadeMinima("");
-      setFornecedor("");
-      setMostrarFormulario(false);
+      limparFormulario();
     } catch (error) {
-      toast.error("Erro ao cadastrar produto.");
+      toast.error("Erro ao salvar produto.");
     }
+  }
+
+  async function atualizarQuantidade(produto, novaQuantidade) {
+    try {
+      await fetch("/api/estoque", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: produto.id_produto,
+          nome: produto.nome,
+          categoria: produto.categoria,
+          quantidade_atual: novaQuantidade,
+          quantidade_minima: produto.quantidade_minima,
+          fornecedor: produto.fornecedor,
+        }),
+      });
+
+      toast.success("Quantidade atualizada!");
+      carregarProdutos();
+    } catch (error) {
+      toast.error("Erro ao atualizar quantidade.");
+    }
+  }
+
+  function editarProduto(produto) {
+    setEditandoId(produto.id_produto);
+    setNome(produto.nome || "");
+    setCategoria(produto.categoria || "");
+    setQuantidadeAtual(produto.quantidade_atual || "");
+    setQuantidadeMinima(produto.quantidade_minima || "");
+    setFornecedor(produto.fornecedor || "");
+    setMostrarFormulario(true);
+  }
+
+  function limparFormulario() {
+    setEditandoId(null);
+    setNome("");
+    setCategoria("");
+    setQuantidadeAtual("");
+    setQuantidadeMinima("");
+    setFornecedor("");
+    setMostrarFormulario(false);
   }
 
   useEffect(() => {
@@ -58,9 +104,7 @@ export default function Estoque() {
   }, []);
 
   function estoqueBaixo(produto) {
-    return (
-      Number(produto.quantidade_atual) <= Number(produto.quantidade_minima)
-    );
+    return Number(produto.quantidade_atual) <= Number(produto.quantidade_minima);
   }
 
   const totalProdutos = produtos.length;
@@ -129,7 +173,7 @@ export default function Estoque() {
               className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8"
             >
               <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
-                Novo Produto
+                {editandoId ? "Editar Produto" : "Novo Produto"}
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -174,12 +218,21 @@ export default function Estoque() {
                 />
               </div>
 
-              <button
-                onClick={cadastrarProduto}
-                className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl mt-5 shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
-              >
-                Salvar Produto
-              </button>
+              <div className="flex flex-col md:flex-row gap-3 mt-5">
+                <button
+                  onClick={salvarProduto}
+                  className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
+                >
+                  {editandoId ? "Atualizar Produto" : "Salvar Produto"}
+                </button>
+
+                <button
+                  onClick={limparFormulario}
+                  className="bg-[#f3f1eb] text-[#1d3557] px-6 py-3 rounded-2xl hover:bg-gray-200 transition"
+                >
+                  Cancelar
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -190,12 +243,12 @@ export default function Estoque() {
               </h2>
 
               <p className="text-gray-500 text-sm mt-1">
-                Acompanhe os itens cadastrados no estoque.
+                Acompanhe e atualize a quantidade dos itens cadastrados.
               </p>
             </div>
 
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full min-w-[900px]">
+              <table className="w-full min-w-[1050px]">
                 <thead className="bg-[#f3f1eb] text-[#1d3557]">
                   <tr>
                     <th className="text-left p-4">Produto</th>
@@ -204,12 +257,14 @@ export default function Estoque() {
                     <th className="text-left p-4">Mínimo</th>
                     <th className="text-left p-4">Fornecedor</th>
                     <th className="text-left p-4">Status</th>
+                    <th className="text-left p-4">Ações</th>
                   </tr>
                 </thead>
 
                 <tbody className="text-black">
                   {produtos.map((produto) => {
                     const baixo = estoqueBaixo(produto);
+                    const quantidade = Number(produto.quantidade_atual || 0);
 
                     return (
                       <tr
@@ -220,21 +275,15 @@ export default function Estoque() {
                           {produto.nome || "-"}
                         </td>
 
-                        <td className="p-4">
-                          {produto.categoria || "-"}
-                        </td>
+                        <td className="p-4">{produto.categoria || "-"}</td>
 
-                        <td className="p-4">
+                        <td className="p-4 font-bold text-[#1d3557]">
                           {produto.quantidade_atual}
                         </td>
 
-                        <td className="p-4">
-                          {produto.quantidade_minima}
-                        </td>
+                        <td className="p-4">{produto.quantidade_minima}</td>
 
-                        <td className="p-4">
-                          {produto.fornecedor || "-"}
-                        </td>
+                        <td className="p-4">{produto.fornecedor || "-"}</td>
 
                         <td className="p-4">
                           {baixo ? (
@@ -247,13 +296,45 @@ export default function Estoque() {
                             </span>
                           )}
                         </td>
+
+                        <td className="p-4">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() =>
+                                atualizarQuantidade(produto, quantidade + 1)
+                              }
+                              className="bg-green-100 text-green-700 px-3 py-2 rounded-xl font-medium"
+                            >
+                              +1
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                atualizarQuantidade(
+                                  produto,
+                                  Math.max(0, quantidade - 1)
+                                )
+                              }
+                              className="bg-red-100 text-red-700 px-3 py-2 rounded-xl font-medium"
+                            >
+                              -1
+                            </button>
+
+                            <button
+                              onClick={() => editarProduto(produto)}
+                              className="bg-[#1d3557] text-white px-4 py-2 rounded-xl font-medium"
+                            >
+                              Editar
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
 
                   {produtos.length === 0 && (
                     <tr>
-                      <td colSpan="6" className="p-8 text-center text-gray-500">
+                      <td colSpan="7" className="p-8 text-center text-gray-500">
                         Nenhum produto cadastrado ainda.
                       </td>
                     </tr>
@@ -265,6 +346,7 @@ export default function Estoque() {
             <div className="md:hidden p-4 space-y-4">
               {produtos.map((produto) => {
                 const baixo = estoqueBaixo(produto);
+                const quantidade = Number(produto.quantidade_atual || 0);
 
                 return (
                   <motion.div
@@ -328,6 +410,33 @@ export default function Estoque() {
                         valor={produto.fornecedor || "-"}
                       />
                     </div>
+
+                    <div className="grid grid-cols-3 gap-2 mt-5">
+                      <button
+                        onClick={() =>
+                          atualizarQuantidade(produto, quantidade + 1)
+                        }
+                        className="bg-green-100 text-green-700 py-3 rounded-2xl font-semibold"
+                      >
+                        +1
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          atualizarQuantidade(produto, Math.max(0, quantidade - 1))
+                        }
+                        className="bg-red-100 text-red-700 py-3 rounded-2xl font-semibold"
+                      >
+                        -1
+                      </button>
+
+                      <button
+                        onClick={() => editarProduto(produto)}
+                        className="bg-[#1d3557] text-white py-3 rounded-2xl font-semibold"
+                      >
+                        Editar
+                      </button>
+                    </div>
                   </motion.div>
                 );
               })}
@@ -356,31 +465,19 @@ function ResumoCard({ titulo, valor, descricao, destaque, verde }) {
           : "bg-white border-gray-100"
       }`}
     >
-      <p
-        className={`text-sm ${
-          destaque ? "text-blue-100" : "text-gray-500"
-        }`}
-      >
+      <p className={`text-sm ${destaque ? "text-blue-100" : "text-gray-500"}`}>
         {titulo}
       </p>
 
       <h2
         className={`text-3xl md:text-4xl font-bold mt-3 ${
-          destaque
-            ? "text-white"
-            : verde
-            ? "text-green-600"
-            : "text-[#1d3557]"
+          destaque ? "text-white" : verde ? "text-green-600" : "text-[#1d3557]"
         }`}
       >
         {valor}
       </h2>
 
-      <p
-        className={`text-xs mt-2 ${
-          destaque ? "text-blue-100" : "text-gray-400"
-        }`}
-      >
+      <p className={`text-xs mt-2 ${destaque ? "text-blue-100" : "text-gray-400"}`}>
         {descricao}
       </p>
     </motion.div>

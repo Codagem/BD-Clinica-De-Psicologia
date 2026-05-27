@@ -64,3 +64,47 @@ export async function POST(req) {
     });
   }
 }
+
+export async function PUT(req) {
+  try {
+    const body = await req.json();
+
+    const {
+      id,
+      nome,
+      categoria,
+      quantidade_atual,
+      quantidade_minima,
+      fornecedor,
+    } = body;
+
+    await pool.query(
+      `
+      UPDATE estoque
+      SET
+        nome = $1,
+        categoria = $2,
+        quantidade_atual = $3,
+        quantidade_minima = $4,
+        fornecedor = $5
+      WHERE id_produto = $6
+      `,
+      [
+        nome,
+        categoria,
+        quantidade_atual,
+        quantidade_minima,
+        fornecedor,
+        id,
+      ]
+    );
+
+    return Response.json({
+      mensagem: "Produto atualizado",
+    });
+  } catch (error) {
+    return Response.json({
+      erro: error.message,
+    });
+  }
+}
