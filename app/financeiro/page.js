@@ -20,6 +20,8 @@ export default function Financeiro() {
     despesas: [],
   });
 
+  const [consultas, setConsultas] = useState([]);
+
   const [mostrarPagamento, setMostrarPagamento] = useState(false);
   const [mostrarDespesa, setMostrarDespesa] = useState(false);
 
@@ -40,48 +42,59 @@ export default function Financeiro() {
     setDados(resultado);
   }
 
-  async function cadastrarPagamento() {
-  try {
-    const resposta = await fetch("/api/financeiro", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        tipo: "pagamento",
-        id_consulta: Number(idConsulta),
-        valor: Number(valorPagamento),
-        forma_pagamento: formaPagamento,
-        status_pagamento: statusPagamento,
-        data_pagamento: dataPagamento,
-      }),
-    });
-
+  async function carregarConsultas() {
+    const resposta = await fetch("/api/consultas");
     const resultado = await resposta.json();
 
-    if (resultado.erro) {
-      toast.error(resultado.erro);
-      return;
+    if (Array.isArray(resultado)) {
+      setConsultas(resultado);
+    } else {
+      setConsultas([]);
     }
-
-    toast.success("Pagamento cadastrado com sucesso!");
-
-    setIdConsulta("");
-    setValorPagamento("");
-    setFormaPagamento("Pix");
-    setStatusPagamento("Pago");
-    setDataPagamento("");
-    setMostrarPagamento(false);
-
-    carregarFinanceiro();
-  } catch (error) {
-    toast.error("Erro ao cadastrar pagamento.");
   }
-}
+
+  async function cadastrarPagamento() {
+    try {
+      const resposta = await fetch("/api/financeiro", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tipo: "pagamento",
+          id_consulta: Number(idConsulta),
+          valor: Number(valorPagamento),
+          forma_pagamento: formaPagamento,
+          status_pagamento: statusPagamento,
+          data_pagamento: dataPagamento,
+        }),
+      });
+
+      const resultado = await resposta.json();
+
+      if (resultado.erro) {
+        toast.error(resultado.erro);
+        return;
+      }
+
+      toast.success("Pagamento cadastrado com sucesso!");
+
+      setIdConsulta("");
+      setValorPagamento("");
+      setFormaPagamento("Pix");
+      setStatusPagamento("Pago");
+      setDataPagamento("");
+      setMostrarPagamento(false);
+
+      carregarFinanceiro();
+    } catch (error) {
+      toast.error("Erro ao cadastrar pagamento.");
+    }
+  }
 
   async function cadastrarDespesa() {
     try {
-      await fetch("/api/financeiro", {
+      const resposta = await fetch("/api/financeiro", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -90,10 +103,17 @@ export default function Financeiro() {
           tipo: "despesa",
           descricao,
           categoria,
-          valor: valorDespesa,
+          valor: Number(valorDespesa),
           data_despesa: dataDespesa,
         }),
       });
+
+      const resultado = await resposta.json();
+
+      if (resultado.erro) {
+        toast.error(resultado.erro);
+        return;
+      }
 
       toast.success("Despesa cadastrada com sucesso!");
 
@@ -111,6 +131,7 @@ export default function Financeiro() {
 
   useEffect(() => {
     carregarFinanceiro();
+    carregarConsultas();
   }, []);
 
   function formatarData(data) {
@@ -222,13 +243,24 @@ export default function Financeiro() {
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-                <input
-                  type="number"
-                  placeholder="ID da consulta"
+                <select
                   value={idConsulta}
                   onChange={(e) => setIdConsulta(e.target.value)}
                   className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
-                />
+                >
+                  <option value="">Selecione a consulta</option>
+
+                  {consultas.map((consulta) => (
+                    <option
+                      key={consulta.id_consulta}
+                      value={consulta.id_consulta}
+                    >
+                      #{consulta.id_consulta} - {consulta.paciente} -{" "}
+                      {formatarData(consulta.data_consulta)} -{" "}
+                      {consulta.horario?.slice(0, 5)}
+                    </option>
+                  ))}
+                </select>
 
                 <input
                   type="number"
@@ -314,6 +346,7 @@ export default function Financeiro() {
 
                 <input
                   type="date"
+                  lang="en-CA"
                   value={dataDespesa}
                   onChange={(e) => setDataDespesa(e.target.value)}
                   className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
