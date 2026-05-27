@@ -125,6 +125,8 @@ export default function Financeiro() {
     return "bg-[#e8eadf] text-[#1d3557]";
   }
 
+  const lucroNegativo = Number(dados.resumo.lucro_liquido || 0) < 0;
+
   const dadosGrafico = [
     {
       nome: "Receitas",
@@ -133,10 +135,6 @@ export default function Financeiro() {
     {
       nome: "Despesas",
       valor: Number(dados.resumo.total_despesas || 0),
-    },
-    {
-      nome: "Lucro",
-      valor: Number(dados.resumo.lucro_liquido || 0),
     },
   ];
 
@@ -327,17 +325,17 @@ export default function Financeiro() {
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-[#1d3557]">
-                  Resumo financeiro
+                  Entradas x Saídas
                 </h2>
 
                 <p className="text-gray-500 text-sm mt-1">
-                  Comparativo entre receitas, despesas e lucro.
+                  Comparativo entre entradas e saídas financeiras.
                 </p>
               </div>
 
               <div className="bg-[#f8f7f4] rounded-3xl p-4 h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dadosGrafico} barSize={70}>
+                  <BarChart data={dadosGrafico} barSize={90}>
                     <XAxis dataKey="nome" axisLine={false} tickLine={false} />
 
                     <Tooltip
@@ -388,8 +386,20 @@ export default function Financeiro() {
                     </h3>
                   </div>
 
-                  <div className="bg-white rounded-3xl p-5 text-[#1d3557]">
-                    <p className="text-sm text-gray-500">Lucro líquido</p>
+                  <div
+                    className={`rounded-3xl p-5 ${
+                      lucroNegativo
+                        ? "bg-red-50 text-red-600"
+                        : "bg-white text-[#1d3557]"
+                    }`}
+                  >
+                    <p
+                      className={`text-sm ${
+                        lucroNegativo ? "text-red-500" : "text-gray-500"
+                      }`}
+                    >
+                      Lucro líquido
+                    </p>
 
                     <h3 className="text-3xl font-bold mt-2">
                       {formatarValor(dados.resumo.lucro_liquido)}
