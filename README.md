@@ -296,6 +296,10 @@ Sendo está a forma como os funcionarios veram as fichas no sistema.
 
 <hr>
 
+<h2>💰 Custo de Implementação</h2>
+
+<hr>
+
 <p align="center">
 Desenvolvido para fins acadêmicos e gerenciamento clínico 🧠
 </p>
