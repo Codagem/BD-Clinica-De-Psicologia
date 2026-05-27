@@ -22,6 +22,11 @@ export default function Cliente() {
   const [consultas, setConsultas] = useState([]);
   const [idPaciente, setIdPaciente] = useState(null);
 
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [senhaAtual, setSenhaAtual] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+
   useEffect(() => {
     const logado = localStorage.getItem("logado");
     const tipoUsuario = localStorage.getItem("tipo_usuario");
@@ -61,6 +66,7 @@ export default function Cliente() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          tipo: "confirmar_consulta",
           id_consulta: idConsulta,
           status_consulta: "Confirmado",
         }),
@@ -74,10 +80,43 @@ export default function Cliente() {
       }
 
       toast.success("Consulta confirmada com sucesso!");
-
       carregarDadosPaciente(idPaciente);
     } catch (error) {
       toast.error("Erro ao confirmar consulta.");
+    }
+  }
+
+  async function alterarSenha() {
+    try {
+      const resposta = await fetch("/api/cliente", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tipo: "alterar_senha",
+          id_paciente: idPaciente,
+          senha_atual: senhaAtual,
+          nova_senha: novaSenha,
+          confirmar_senha: confirmarSenha,
+        }),
+      });
+
+      const resultado = await resposta.json();
+
+      if (resultado.erro) {
+        toast.error(resultado.erro);
+        return;
+      }
+
+      toast.success("Senha alterada com sucesso!");
+
+      setSenhaAtual("");
+      setNovaSenha("");
+      setConfirmarSenha("");
+      setMostrarSenha(false);
+    } catch (error) {
+      toast.error("Erro ao alterar senha.");
     }
   }
 
@@ -168,9 +207,7 @@ export default function Cliente() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-6 mb-8">
           <div className="bg-white rounded-3xl p-6 border border-[#1d3557]/10 shadow-sm">
-            <p className="text-[#2b4c7e] font-semibold mb-2">
-              Meus dados
-            </p>
+            <p className="text-[#2b4c7e] font-semibold mb-2">Meus dados</p>
 
             <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
               Informações cadastradas
@@ -182,6 +219,13 @@ export default function Cliente() {
               <Info label="Telefone" valor={paciente?.telefone || "-"} />
               <Info label="Profissão" valor={paciente?.profissao || "-"} />
             </div>
+
+            <button
+              onClick={() => setMostrarSenha(!mostrarSenha)}
+              className="mt-6 w-full bg-[#1d3557] text-white py-3 rounded-2xl hover:opacity-90 transition"
+            >
+              Alterar senha
+            </button>
           </div>
 
           <div className="bg-white rounded-3xl p-6 border border-[#1d3557]/10 shadow-sm">
@@ -197,9 +241,7 @@ export default function Cliente() {
               <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div>
-                    <p className="text-gray-500 text-sm">
-                      Data e horário
-                    </p>
+                    <p className="text-gray-500 text-sm">Data e horário</p>
 
                     <h3 className="text-3xl font-bold text-[#1d3557] mt-1">
                       {formatarData(proximaConsulta.data_consulta)} às{" "}
@@ -251,6 +293,47 @@ export default function Cliente() {
             )}
           </div>
         </div>
+
+        {mostrarSenha && (
+          <div className="bg-white rounded-3xl p-6 border border-[#1d3557]/10 shadow-sm mb-8">
+            <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
+              Alterar senha
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <input
+                type="password"
+                placeholder="Senha atual"
+                value={senhaAtual}
+                onChange={(e) => setSenhaAtual(e.target.value)}
+                className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+              />
+
+              <input
+                type="password"
+                placeholder="Nova senha"
+                value={novaSenha}
+                onChange={(e) => setNovaSenha(e.target.value)}
+                className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+              />
+
+              <input
+                type="password"
+                placeholder="Confirmar nova senha"
+                value={confirmarSenha}
+                onChange={(e) => setConfirmarSenha(e.target.value)}
+                className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+              />
+            </div>
+
+            <button
+              onClick={alterarSenha}
+              className="mt-5 bg-[#1d3557] text-white px-6 py-3 rounded-2xl hover:opacity-90 transition"
+            >
+              Salvar nova senha
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
           <Card
@@ -307,17 +390,11 @@ export default function Cliente() {
                       {formatarData(consulta.data_consulta)}
                     </td>
 
-                    <td className="p-4">
-                      {formatarHora(consulta.horario)}
-                    </td>
+                    <td className="p-4">{formatarHora(consulta.horario)}</td>
 
-                    <td className="p-4">
-                      {consulta.psicologo || "-"}
-                    </td>
+                    <td className="p-4">{consulta.psicologo || "-"}</td>
 
-                    <td className="p-4">
-                      {consulta.tipo_atendimento || "-"}
-                    </td>
+                    <td className="p-4">{consulta.tipo_atendimento || "-"}</td>
 
                     <td className="p-4">
                       <span
@@ -360,59 +437,6 @@ export default function Cliente() {
               </tbody>
             </table>
           </div>
-
-          <div className="md:hidden p-4 space-y-4">
-            {consultas.map((consulta) => (
-              <div
-                key={consulta.id_consulta}
-                className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10"
-              >
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div>
-                    <p className="text-xs text-gray-500">
-                      {formatarData(consulta.data_consulta)}
-                    </p>
-
-                    <h3 className="text-xl font-bold text-[#1d3557] mt-1">
-                      {formatarHora(consulta.horario)}
-                    </h3>
-                  </div>
-
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${corStatus(
-                      consulta.status_consulta
-                    )}`}
-                  >
-                    {consulta.status_consulta}
-                  </span>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <Info label="Psicólogo" valor={consulta.psicologo || "-"} />
-                  <Info label="Tipo" valor={consulta.tipo_atendimento || "-"} />
-                  <Info
-                    label="Observações"
-                    valor={consulta.observacoes || "-"}
-                  />
-                </div>
-
-                {consulta.status_consulta === "Agendado" && (
-                  <button
-                    onClick={() => confirmarConsulta(consulta.id_consulta)}
-                    className="mt-5 w-full bg-[#1d3557] text-white py-3 rounded-2xl font-semibold hover:opacity-90 transition"
-                  >
-                    Confirmar presença
-                  </button>
-                )}
-              </div>
-            ))}
-
-            {consultas.length === 0 && (
-              <div className="p-8 text-center text-gray-500">
-                Nenhuma consulta encontrada.
-              </div>
-            )}
-          </div>
         </section>
       </div>
     </div>
@@ -444,13 +468,9 @@ function Card({ titulo, texto, icone }) {
         {icone}
       </div>
 
-      <h3 className="text-xl font-bold text-[#1d3557] mb-2">
-        {titulo}
-      </h3>
+      <h3 className="text-xl font-bold text-[#1d3557] mb-2">{titulo}</h3>
 
-      <p className="text-gray-500 text-sm leading-relaxed">
-        {texto}
-      </p>
+      <p className="text-gray-500 text-sm leading-relaxed">{texto}</p>
     </div>
   );
 }

@@ -8,9 +8,12 @@ export default function Login() {
 
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
+  const [carregando, setCarregando] = useState(false);
 
-  function entrar(e) {
+  async function entrar(e) {
     e.preventDefault();
+
+    setCarregando(true);
 
     // LOGIN ADMIN
     if (usuario === "admin" && senha === "123") {
@@ -21,19 +24,39 @@ export default function Login() {
       return;
     }
 
-    // LOGIN PACIENTE
-    if (usuario === "paciente" && senha === "123") {
+    // LOGIN PACIENTE PELO BANCO
+    try {
+      const resposta = await fetch("/api/login-paciente", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          usuario,
+          senha,
+        }),
+      });
+
+      const resultado = await resposta.json();
+
+      if (resultado.erro) {
+        alert(resultado.erro);
+        setCarregando(false);
+        return;
+      }
+
       localStorage.setItem("logado", "true");
       localStorage.setItem("tipo_usuario", "paciente");
-
-      // ID fictício do paciente
-      localStorage.setItem("id_paciente", "1");
+      localStorage.setItem(
+        "id_paciente",
+        resultado.id_paciente
+      );
 
       router.push("/cliente");
-      return;
+    } catch (error) {
+      alert("Erro ao realizar login.");
+      setCarregando(false);
     }
-
-    alert("Usuário ou senha inválidos");
   }
 
   return (
@@ -104,9 +127,10 @@ export default function Login() {
 
               <button
                 type="submit"
-                className="w-full bg-[#2b4c7e] hover:bg-[#244267] text-white rounded-2xl p-4 font-semibold transition"
+                disabled={carregando}
+                className="w-full bg-[#2b4c7e] hover:bg-[#244267] text-white rounded-2xl p-4 font-semibold transition disabled:opacity-60"
               >
-                Entrar
+                {carregando ? "Entrando..." : "Entrar"}
               </button>
             </form>
 
