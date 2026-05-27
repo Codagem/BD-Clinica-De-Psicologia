@@ -49,85 +49,113 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-            <div className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm">
-              <p className="text-gray-500">Pacientes ativos</p>
-              <h2 className="text-4xl font-bold text-[#1d3557] mt-3">
-                {dados.pacientes}
-              </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+            <Card titulo="Agendamentos hoje" valor={dados.consultas} icone="📅" />
+            <Card titulo="Consultas hoje" valor={dados.consultas} icone="📋" />
+            <Card titulo="Pacientes ativos" valor={dados.pacientes} icone="👥" />
+            <Card titulo="Faturamento" valor={`R$ ${dados.receitas}`} icone="💰" menor />
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-6">
+            <div className="bg-white rounded-[32px] border border-black/5 shadow-sm p-8 min-h-[280px] overflow-hidden relative">
+              <div className="relative z-10 max-w-md">
+                <h2 className="text-3xl md:text-4xl font-serif text-[#1d3557]">
+                  Cuidado, ciência
+                  <br />
+                  e empatia.
+                </h2>
+
+                <p className="text-gray-500 mt-5">
+                  Gerencie sua clínica de forma organizada e foque no que
+                  realmente importa: seus pacientes.
+                </p>
+
+                <button className="bg-[#1d3557] text-white px-6 py-4 rounded-2xl mt-8 hover:bg-[#16304d] transition">
+                  Novo agendamento
+                </button>
+              </div>
+
+              <div className="absolute right-6 bottom-0 text-[180px] opacity-[0.06] text-[#1d3557]">
+                Ψ
+              </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm">
-              <p className="text-gray-500">Consultas</p>
-              <h2 className="text-4xl font-bold text-[#1d3557] mt-3">
-                {dados.consultas}
-              </h2>
-            </div>
+            <div className="bg-white rounded-[32px] border border-black/5 shadow-sm p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-2xl font-serif text-[#1d3557]">
+                  Próximos agendamentos
+                </h2>
 
-            <div className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm">
-              <p className="text-gray-500">Receitas</p>
-              <h2 className="text-3xl font-bold text-[#1d3557] mt-3">
-                R$ {dados.receitas}
-              </h2>
-            </div>
+                <span className="text-sm text-[#1d3557] font-medium">
+                  Ver agenda →
+                </span>
+              </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-black/5 shadow-sm">
-              <p className="text-gray-500">Estoque baixo</p>
-              <h2 className="text-4xl font-bold text-[#1d3557] mt-3">
-                {dados.estoqueBaixo}
-              </h2>
+              <div className="space-y-3">
+                <Agendamento hora="08:00" nome="Maria Oliveira" tipo="Consulta" />
+                <Agendamento hora="09:30" nome="Carlos Souza" tipo="Retorno" />
+                <Agendamento hora="11:00" nome="Ana Clara" tipo="Consulta" />
+                <Agendamento hora="14:00" nome="João Pedro" tipo="Consulta" />
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 mt-6">
-            <div className="bg-white rounded-[32px] border border-black/5 shadow-sm p-8 min-h-[260px] flex flex-col justify-center">
-              <h2 className="text-3xl md:text-4xl font-serif text-[#1d3557]">
-                Cuidado, ciência
-                <br />
-                e empatia.
-              </h2>
-
-              <p className="text-gray-500 mt-5 max-w-lg">
-                Gerencie sua clínica de forma organizada e foque no que
-                realmente importa: seus pacientes.
-              </p>
-
-              <button className="bg-[#1d3557] text-white px-6 py-4 rounded-2xl mt-8 w-fit hover:bg-[#16304d] transition">
-                Novo agendamento
-              </button>
-            </div>
-
-            <div className="bg-white rounded-[32px] border border-black/5 shadow-sm p-8">
-              <h2 className="text-2xl font-serif text-[#1d3557] mb-6">
-                Resumo financeiro
-              </h2>
-
-              <div className="space-y-5">
-                <div className="flex justify-between border-b pb-4">
-                  <span className="text-gray-500">Receitas</span>
-                  <strong className="text-[#1d3557]">
-                    R$ {dados.receitas}
-                  </strong>
-                </div>
-
-                <div className="flex justify-between border-b pb-4">
-                  <span className="text-gray-500">Despesas</span>
-                  <strong className="text-[#1d3557]">
-                    R$ {dados.despesas}
-                  </strong>
-                </div>
-
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Lucro líquido</span>
-                  <strong className="text-[#1d3557]">
-                    R$ {dados.lucro}
-                  </strong>
-                </div>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+            <MiniCard titulo="Agenda" texto="Veja os horários e próximos atendimentos." icone="📅" />
+            <MiniCard titulo="Consultas" texto="Acompanhe consultas marcadas e realizadas." icone="📋" />
+            <MiniCard titulo="Pacientes" texto="Gerencie cadastros, telefones e dados clínicos." icone="👥" />
+            <MiniCard titulo="Financeiro" texto={`Receitas: R$ ${dados.receitas}`} icone="💰" />
           </div>
         </main>
       </div>
     </Protegido>
+  );
+}
+
+function Card({ titulo, valor, icone, menor }) {
+  return (
+    <div className="bg-white rounded-3xl p-6 border border-black/5 shadow-sm">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-gray-500">{titulo}</p>
+          <h2
+            className={`font-bold text-[#1d3557] mt-3 ${
+              menor ? "text-2xl md:text-3xl" : "text-4xl"
+            }`}
+          >
+            {valor}
+          </h2>
+        </div>
+
+        <div className="w-14 h-14 rounded-2xl bg-[#1d3557]/10 flex items-center justify-center text-2xl">
+          {icone}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Agendamento({ hora, nome, tipo }) {
+  return (
+    <div className="grid grid-cols-[70px_1fr_auto] items-center gap-3 border-b border-gray-100 pb-3 text-sm">
+      <strong className="text-[#1d3557]">{hora}</strong>
+      <span className="text-gray-700">{nome}</span>
+      <span className="bg-[#1d3557]/10 text-[#1d3557] px-3 py-1 rounded-full">
+        {tipo}
+      </span>
+    </div>
+  );
+}
+
+function MiniCard({ titulo, texto, icone }) {
+  return (
+    <div className="bg-white rounded-[28px] p-6 border border-black/5 shadow-sm hover:-translate-y-1 transition">
+      <div className="w-12 h-12 rounded-2xl bg-[#1d3557]/10 flex items-center justify-center text-2xl mb-5">
+        {icone}
+      </div>
+
+      <h3 className="text-xl font-serif text-[#1d3557] mb-2">{titulo}</h3>
+      <p className="text-gray-500 text-sm leading-relaxed">{texto}</p>
+    </div>
   );
 }
