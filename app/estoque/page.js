@@ -49,11 +49,16 @@ export default function Estoque() {
     carregarProdutos();
   }, []);
 
+  function estoqueBaixo(produto) {
+    return (
+      Number(produto.quantidade_atual) <= Number(produto.quantidade_minima)
+    );
+  }
+
   const totalProdutos = produtos.length;
 
-  const produtosBaixos = produtos.filter(
-    (produto) =>
-      Number(produto.quantidade_atual) <= Number(produto.quantidade_minima)
+  const produtosBaixos = produtos.filter((produto) =>
+    estoqueBaixo(produto)
   ).length;
 
   const produtosNormais = totalProdutos - produtosBaixos;
@@ -66,12 +71,16 @@ export default function Estoque() {
         <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <div>
+              <p className="text-[#2b4c7e] font-semibold mb-2">
+                Controle interno
+              </p>
+
               <h1 className="text-3xl md:text-4xl font-bold text-[#1d3557]">
                 Estoque
               </h1>
 
               <p className="text-gray-500 mt-2">
-                Controle de produtos, materiais e fornecedores da clínica.
+                Controle produtos, materiais e fornecedores da clínica.
               </p>
             </div>
 
@@ -84,26 +93,25 @@ export default function Estoque() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-              <p className="text-gray-500 text-sm">Total de produtos</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-[#1d3557] mt-3">
-                {totalProdutos}
-              </h2>
-            </div>
+            <ResumoCard
+              titulo="Total de produtos"
+              valor={totalProdutos}
+              descricao="Itens cadastrados"
+            />
 
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-              <p className="text-gray-500 text-sm">Estoque normal</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-green-600 mt-3">
-                {produtosNormais}
-              </h2>
-            </div>
+            <ResumoCard
+              titulo="Estoque normal"
+              valor={produtosNormais}
+              descricao="Itens em quantidade segura"
+              verde
+            />
 
-            <div className="bg-[#1d3557] p-6 rounded-3xl shadow-sm">
-              <p className="text-blue-100 text-sm">Estoque baixo</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mt-3">
-                {produtosBaixos}
-              </h2>
-            </div>
+            <ResumoCard
+              titulo="Estoque baixo"
+              valor={produtosBaixos}
+              descricao="Itens precisam reposição"
+              destaque
+            />
           </div>
 
           {mostrarFormulario && (
@@ -174,7 +182,7 @@ export default function Estoque() {
               </p>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[900px]">
                 <thead className="bg-[#f3f1eb] text-[#1d3557]">
                   <tr>
@@ -189,22 +197,35 @@ export default function Estoque() {
 
                 <tbody className="text-black">
                   {produtos.map((produto) => {
-                    const estoqueBaixo =
-                      Number(produto.quantidade_atual) <=
-                      Number(produto.quantidade_minima);
+                    const baixo = estoqueBaixo(produto);
 
                     return (
                       <tr
                         key={produto.id_produto}
                         className="border-b border-gray-100 hover:bg-[#fbfaf7] transition"
                       >
-                        <td className="p-4 font-medium">{produto.nome}</td>
-                        <td className="p-4">{produto.categoria}</td>
-                        <td className="p-4">{produto.quantidade_atual}</td>
-                        <td className="p-4">{produto.quantidade_minima}</td>
-                        <td className="p-4">{produto.fornecedor}</td>
+                        <td className="p-4 font-medium">
+                          {produto.nome || "-"}
+                        </td>
+
                         <td className="p-4">
-                          {estoqueBaixo ? (
+                          {produto.categoria || "-"}
+                        </td>
+
+                        <td className="p-4">
+                          {produto.quantidade_atual}
+                        </td>
+
+                        <td className="p-4">
+                          {produto.quantidade_minima}
+                        </td>
+
+                        <td className="p-4">
+                          {produto.fornecedor || "-"}
+                        </td>
+
+                        <td className="p-4">
+                          {baixo ? (
                             <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
                               Baixo
                             </span>
@@ -228,9 +249,133 @@ export default function Estoque() {
                 </tbody>
               </table>
             </div>
+
+            <div className="md:hidden p-4 space-y-4">
+              {produtos.map((produto) => {
+                const baixo = estoqueBaixo(produto);
+
+                return (
+                  <div
+                    key={produto.id_produto}
+                    className={`rounded-3xl p-5 border shadow-sm ${
+                      baixo
+                        ? "bg-red-50 border-red-100"
+                        : "bg-[#fbfaf7] border-[#1d3557]/10"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div>
+                        <p className="text-xs text-gray-500">
+                          Produto em estoque
+                        </p>
+
+                        <h3 className="font-bold text-[#1d3557] mt-1">
+                          {produto.nome || "Produto"}
+                        </h3>
+                      </div>
+
+                      {baixo ? (
+                        <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">
+                          Baixo
+                        </span>
+                      ) : (
+                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">
+                          Normal
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                        <p className="text-xs text-gray-500">Atual</p>
+
+                        <h4 className="text-2xl font-bold text-[#1d3557] mt-1">
+                          {produto.quantidade_atual}
+                        </h4>
+                      </div>
+
+                      <div className="bg-white rounded-2xl p-4 border border-gray-100">
+                        <p className="text-xs text-gray-500">Mínimo</p>
+
+                        <h4
+                          className={`text-2xl font-bold mt-1 ${
+                            baixo ? "text-red-500" : "text-[#1d3557]"
+                          }`}
+                        >
+                          {produto.quantidade_minima}
+                        </h4>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 text-sm">
+                      <Info label="Categoria" valor={produto.categoria || "-"} />
+                      <Info
+                        label="Fornecedor"
+                        valor={produto.fornecedor || "-"}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+
+              {produtos.length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  Nenhum produto cadastrado ainda.
+                </div>
+              )}
+            </div>
           </div>
         </main>
       </div>
     </Protegido>
+  );
+}
+
+function ResumoCard({ titulo, valor, descricao, destaque, verde }) {
+  return (
+    <div
+      className={`rounded-3xl p-6 shadow-sm border ${
+        destaque
+          ? "bg-[#1d3557] border-[#1d3557] text-white"
+          : "bg-white border-gray-100"
+      }`}
+    >
+      <p
+        className={`text-sm ${
+          destaque ? "text-blue-100" : "text-gray-500"
+        }`}
+      >
+        {titulo}
+      </p>
+
+      <h2
+        className={`text-3xl md:text-4xl font-bold mt-3 ${
+          destaque
+            ? "text-white"
+            : verde
+            ? "text-green-600"
+            : "text-[#1d3557]"
+        }`}
+      >
+        {valor}
+      </h2>
+
+      <p
+        className={`text-xs mt-2 ${
+          destaque ? "text-blue-100" : "text-gray-400"
+        }`}
+      >
+        {descricao}
+      </p>
+    </div>
+  );
+}
+
+function Info({ label, valor }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-2">
+      <span className="text-gray-500">{label}</span>
+      <span className="text-[#1d3557] font-medium text-right">{valor}</span>
+    </div>
   );
 }
