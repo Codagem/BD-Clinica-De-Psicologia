@@ -3,6 +3,18 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import { motion } from "framer-motion";
+import {
+  LayoutDashboard,
+  Users,
+  CalendarDays,
+  Wallet,
+  Package,
+  LogOut,
+  LifeBuoy,
+  Menu,
+  X,
+} from "lucide-react";
 
 export default function Sidebar() {
   const router = useRouter();
@@ -19,11 +31,11 @@ export default function Sidebar() {
   }
 
   const links = [
-    { href: "/", label: "Início", icon: "⌂" },
-    { href: "/pacientes", label: "Pacientes", icon: "◉" },
-    { href: "/consultas", label: "Consultas", icon: "□" },
-    { href: "/financeiro", label: "Financeiro", icon: "$" },
-    { href: "/estoque", label: "Estoque", icon: "▣" },
+    { href: "/", label: "Início", icon: LayoutDashboard },
+    { href: "/pacientes", label: "Pacientes", icon: Users },
+    { href: "/consultas", label: "Consultas", icon: CalendarDays },
+    { href: "/financeiro", label: "Financeiro", icon: Wallet },
+    { href: "/estoque", label: "Estoque", icon: Package },
   ];
 
   function estaAtivo(href) {
@@ -37,7 +49,7 @@ export default function Sidebar() {
         onClick={() => setAberto(!aberto)}
         className="fixed top-4 left-4 z-[60] md:hidden bg-[#1d3557] text-white w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center active:scale-95 transition"
       >
-        ☰
+        {aberto ? <X size={22} /> : <Menu size={22} />}
       </button>
 
       {aberto && (
@@ -80,6 +92,7 @@ export default function Sidebar() {
             <div className="space-y-1">
               {links.map((link) => {
                 const ativo = estaAtivo(link.href);
+                const Icone = link.icon;
 
                 return (
                   <Link
@@ -92,21 +105,22 @@ export default function Sidebar() {
                       ${
                         ativo
                           ? "bg-[#1d3557] text-white shadow-sm"
-                          : "text-[#1d3557] hover:bg-[#1d3557]/8 hover:translate-x-1"
+                          : "text-[#1d3557] hover:bg-[#1d3557]/10 hover:translate-x-1"
                       }
                     `}
                   >
                     <span
                       className={`
-                        w-9 h-9 rounded-2xl flex items-center justify-center text-sm font-semibold
+                        w-9 h-9 rounded-2xl flex items-center justify-center
+                        transition-all duration-200
                         ${
                           ativo
                             ? "bg-white/15 text-white"
-                            : "bg-[#1d3557]/8 text-[#1d3557]"
+                            : "bg-[#1d3557]/10 text-[#1d3557] group-hover:bg-white"
                         }
                       `}
                     >
-                      {link.icon}
+                      <Icone size={18} />
                     </span>
 
                     <span className="font-medium">
@@ -114,7 +128,10 @@ export default function Sidebar() {
                     </span>
 
                     {ativo && (
-                      <span className="ml-auto w-2 h-2 rounded-full bg-white" />
+                      <motion.span
+                        layoutId="sidebar-active-dot"
+                        className="ml-auto w-2 h-2 rounded-full bg-white"
+                      />
                     )}
                   </Link>
                 );
@@ -154,15 +171,17 @@ export default function Sidebar() {
                 </div>
               </div>
 
-              <button className="w-full mt-4 border border-[#1d3557]/15 text-[#1d3557] py-3 rounded-2xl hover:bg-[#f3f1eb] transition">
+              <button className="w-full mt-4 border border-[#1d3557]/15 text-[#1d3557] py-3 rounded-2xl hover:bg-[#f3f1eb] transition flex items-center justify-center gap-2">
+                <LifeBuoy size={17} />
                 Suporte
               </button>
             </div>
 
             <button
               onClick={sair}
-              className="w-full bg-[#1d3557] hover:bg-[#16304d] text-white py-4 rounded-2xl shadow-sm transition active:scale-[0.98]"
+              className="w-full bg-[#1d3557] hover:bg-[#16304d] text-white py-4 rounded-2xl shadow-sm transition active:scale-[0.98] flex items-center justify-center gap-2"
             >
+              <LogOut size={18} />
               Sair
             </button>
           </div>
