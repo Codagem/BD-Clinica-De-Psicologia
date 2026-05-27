@@ -4,6 +4,7 @@ import Protegido from "../components/Protegido";
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   ResponsiveContainer,
   BarChart,
@@ -19,10 +20,86 @@ export default function Financeiro() {
     despesas: [],
   });
 
+  const [mostrarPagamento, setMostrarPagamento] = useState(false);
+  const [mostrarDespesa, setMostrarDespesa] = useState(false);
+
+  const [idConsulta, setIdConsulta] = useState("");
+  const [valorPagamento, setValorPagamento] = useState("");
+  const [formaPagamento, setFormaPagamento] = useState("Pix");
+  const [statusPagamento, setStatusPagamento] = useState("Pago");
+  const [dataPagamento, setDataPagamento] = useState("");
+
+  const [descricao, setDescricao] = useState("");
+  const [categoria, setCategoria] = useState("");
+  const [valorDespesa, setValorDespesa] = useState("");
+  const [dataDespesa, setDataDespesa] = useState("");
+
   async function carregarFinanceiro() {
     const resposta = await fetch("/api/financeiro");
     const resultado = await resposta.json();
     setDados(resultado);
+  }
+
+  async function cadastrarPagamento() {
+    try {
+      await fetch("/api/financeiro", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tipo: "pagamento",
+          id_consulta: idConsulta,
+          valor: valorPagamento,
+          forma_pagamento: formaPagamento,
+          status_pagamento: statusPagamento,
+          data_pagamento: dataPagamento,
+        }),
+      });
+
+      toast.success("Pagamento cadastrado com sucesso!");
+
+      setIdConsulta("");
+      setValorPagamento("");
+      setFormaPagamento("Pix");
+      setStatusPagamento("Pago");
+      setDataPagamento("");
+      setMostrarPagamento(false);
+
+      carregarFinanceiro();
+    } catch (error) {
+      toast.error("Erro ao cadastrar pagamento.");
+    }
+  }
+
+  async function cadastrarDespesa() {
+    try {
+      await fetch("/api/financeiro", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tipo: "despesa",
+          descricao,
+          categoria,
+          valor: valorDespesa,
+          data_despesa: dataDespesa,
+        }),
+      });
+
+      toast.success("Despesa cadastrada com sucesso!");
+
+      setDescricao("");
+      setCategoria("");
+      setValorDespesa("");
+      setDataDespesa("");
+      setMostrarDespesa(false);
+
+      carregarFinanceiro();
+    } catch (error) {
+      toast.error("Erro ao cadastrar despesa.");
+    }
   }
 
   useEffect(() => {
@@ -31,7 +108,6 @@ export default function Financeiro() {
 
   function formatarData(data) {
     if (!data) return "-";
-
     return new Date(data).toLocaleDateString("pt-BR");
   }
 
@@ -46,7 +122,6 @@ export default function Financeiro() {
     if (status === "Pago") return "bg-green-100 text-green-700";
     if (status === "Pendente") return "bg-yellow-100 text-yellow-700";
     if (status === "Cancelado") return "bg-red-100 text-red-700";
-
     return "bg-[#e8eadf] text-[#1d3557]";
   }
 
@@ -71,18 +146,42 @@ export default function Financeiro() {
         <Sidebar />
 
         <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
-          <div className="mb-10">
-            <p className="text-[#2b4c7e] font-semibold mb-2">
-              Gestão financeira
-            </p>
+          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5 mb-10">
+            <div>
+              <p className="text-[#2b4c7e] font-semibold mb-2">
+                Gestão financeira
+              </p>
 
-            <h1 className="text-3xl md:text-4xl font-bold text-[#1d3557]">
-              Financeiro
-            </h1>
+              <h1 className="text-3xl md:text-4xl font-bold text-[#1d3557]">
+                Financeiro
+              </h1>
 
-            <p className="text-gray-500 mt-2">
-              Controle receitas, despesas e pagamentos da clínica.
-            </p>
+              <p className="text-gray-500 mt-2">
+                Controle receitas, despesas e pagamentos da clínica.
+              </p>
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-3">
+              <button
+                onClick={() => {
+                  setMostrarPagamento(!mostrarPagamento);
+                  setMostrarDespesa(false);
+                }}
+                className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
+              >
+                + Pagamento
+              </button>
+
+              <button
+                onClick={() => {
+                  setMostrarDespesa(!mostrarDespesa);
+                  setMostrarPagamento(false);
+                }}
+                className="bg-red-500 text-white px-6 py-3 rounded-2xl shadow hover:bg-red-600 hover:scale-[1.02] active:scale-[0.98] transition"
+              >
+                + Despesa
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
@@ -107,44 +206,199 @@ export default function Financeiro() {
             />
           </div>
 
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-10">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-[#1d3557]">
-                Resumo financeiro
+          {mostrarPagamento && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8"
+            >
+              <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
+                Novo Pagamento
               </h2>
 
-              <p className="text-gray-500 text-sm mt-1">
-                Visão rápida de receitas, despesas e lucro líquido.
-              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+                <input
+                  type="number"
+                  placeholder="ID da consulta"
+                  value={idConsulta}
+                  onChange={(e) => setIdConsulta(e.target.value)}
+                  className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                />
+
+                <input
+                  type="number"
+                  placeholder="Valor"
+                  value={valorPagamento}
+                  onChange={(e) => setValorPagamento(e.target.value)}
+                  className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                />
+
+                <select
+                  value={formaPagamento}
+                  onChange={(e) => setFormaPagamento(e.target.value)}
+                  className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                >
+                  <option>Pix</option>
+                  <option>Dinheiro</option>
+                  <option>Cartão</option>
+                  <option>Transferência</option>
+                </select>
+
+                <select
+                  value={statusPagamento}
+                  onChange={(e) => setStatusPagamento(e.target.value)}
+                  className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                >
+                  <option>Pago</option>
+                  <option>Pendente</option>
+                  <option>Cancelado</option>
+                </select>
+
+                <input
+                  type="date"
+                  value={dataPagamento}
+                  onChange={(e) => setDataPagamento(e.target.value)}
+                  className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                />
+              </div>
+
+              <button
+                onClick={cadastrarPagamento}
+                className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl mt-5 shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
+              >
+                Salvar Pagamento
+              </button>
+            </motion.div>
+          )}
+
+          {mostrarDespesa && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8"
+            >
+              <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
+                Nova Despesa
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <input
+                  type="text"
+                  placeholder="Descrição"
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                />
+
+                <input
+                  type="text"
+                  placeholder="Categoria"
+                  value={categoria}
+                  onChange={(e) => setCategoria(e.target.value)}
+                  className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                />
+
+                <input
+                  type="number"
+                  placeholder="Valor"
+                  value={valorDespesa}
+                  onChange={(e) => setValorDespesa(e.target.value)}
+                  className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                />
+
+                <input
+                  type="date"
+                  value={dataDespesa}
+                  onChange={(e) => setDataDespesa(e.target.value)}
+                  className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                />
+              </div>
+
+              <button
+                onClick={cadastrarDespesa}
+                className="bg-red-500 text-white px-6 py-3 rounded-2xl mt-5 shadow hover:bg-red-600 hover:scale-[1.02] active:scale-[0.98] transition"
+              >
+                Salvar Despesa
+              </button>
+            </motion.div>
+          )}
+
+          <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-6 mb-10">
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-[#1d3557]">
+                  Resumo financeiro
+                </h2>
+
+                <p className="text-gray-500 text-sm mt-1">
+                  Comparativo entre receitas, despesas e lucro.
+                </p>
+              </div>
+
+              <div className="bg-[#f8f7f4] rounded-3xl p-4 h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dadosGrafico} barSize={70}>
+                    <XAxis dataKey="nome" axisLine={false} tickLine={false} />
+
+                    <Tooltip
+                      cursor={{ fill: "transparent" }}
+                      formatter={(value) => formatarValor(value)}
+                      contentStyle={{
+                        borderRadius: "18px",
+                        border: "none",
+                        background: "#1d3557",
+                        color: "#fff",
+                      }}
+                    />
+
+                    <Bar
+                      dataKey="valor"
+                      fill="#1d3557"
+                      radius={[18, 18, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dadosGrafico}>
-                  <XAxis
-                    dataKey="nome"
-                    axisLine={false}
-                    tickLine={false}
-                  />
+            <div className="bg-[#1d3557] rounded-3xl p-6 text-white relative overflow-hidden">
+              <div className="relative z-10">
+                <p className="text-blue-100 text-sm mb-2">
+                  Visão financeira
+                </p>
 
-                  <Tooltip
-                    cursor={{ fill: "transparent" }}
-                    formatter={(value) => formatarValor(value)}
-                    contentStyle={{
-                      borderRadius: "16px",
-                      border: "none",
-                      background: "#1d3557",
-                      color: "#fff",
-                    }}
-                  />
+                <h2 className="text-3xl font-bold mb-6">
+                  Painel financeiro
+                </h2>
 
-                  <Bar
-                    dataKey="valor"
-                    fill="#1d3557"
-                    radius={[14, 14, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+                <div className="space-y-4">
+                  <div className="bg-white/10 rounded-3xl p-5">
+                    <p className="text-blue-100 text-sm">Receitas</p>
+
+                    <h3 className="text-3xl font-bold mt-2">
+                      {formatarValor(dados.resumo.total_receitas)}
+                    </h3>
+                  </div>
+
+                  <div className="bg-white/10 rounded-3xl p-5">
+                    <p className="text-blue-100 text-sm">Despesas</p>
+
+                    <h3 className="text-3xl font-bold mt-2">
+                      {formatarValor(dados.resumo.total_despesas)}
+                    </h3>
+                  </div>
+
+                  <div className="bg-white rounded-3xl p-5 text-[#1d3557]">
+                    <p className="text-sm text-gray-500">Lucro líquido</p>
+
+                    <h3 className="text-3xl font-bold mt-2">
+                      {formatarValor(dados.resumo.lucro_liquido)}
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-white/10" />
             </div>
           </div>
 
@@ -382,11 +636,7 @@ function ResumoCard({ titulo, valor, descricao, destaque, vermelho }) {
           : "bg-white border-gray-100"
       }`}
     >
-      <p
-        className={`text-sm ${
-          destaque ? "text-blue-100" : "text-gray-500"
-        }`}
-      >
+      <p className={`text-sm ${destaque ? "text-blue-100" : "text-gray-500"}`}>
         {titulo}
       </p>
 
