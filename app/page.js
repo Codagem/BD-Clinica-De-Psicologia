@@ -12,6 +12,13 @@ import {
   Package,
   ClipboardList,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  Tooltip,
+} from "recharts";
 
 export default function Dashboard() {
   const [dados, setDados] = useState({
@@ -22,6 +29,16 @@ export default function Dashboard() {
     lucro: 0,
     estoqueBaixo: 0,
   });
+
+  const dadosGrafico = [
+    { dia: "Seg", consultas: 8 },
+    { dia: "Ter", consultas: 12 },
+    { dia: "Qua", consultas: 6 },
+    { dia: "Qui", consultas: 15 },
+    { dia: "Sex", consultas: 10 },
+    { dia: "Sáb", consultas: 4 },
+    { dia: "Dom", consultas: 2 },
+  ];
 
   useEffect(() => {
     async function carregarDashboard() {
@@ -155,14 +172,32 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mt-8 bg-[#f3f1eb] rounded-3xl p-5">
-                  <div className="flex items-end gap-3 h-40">
-                    <Barra dia="Seg" valor="8" altura="45%" />
-                    <Barra dia="Ter" valor="12" altura="65%" />
-                    <Barra dia="Qua" valor="6" altura="35%" />
-                    <Barra dia="Qui" valor="15" altura="85%" />
-                    <Barra dia="Sex" valor="10" altura="60%" />
-                    <Barra dia="Sáb" valor="4" altura="25%" />
-                    <Barra dia="Dom" valor="2" altura="15%" />
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dadosGrafico}>
+                        <XAxis
+                          dataKey="dia"
+                          axisLine={false}
+                          tickLine={false}
+                        />
+
+                        <Tooltip
+                          cursor={{ fill: "transparent" }}
+                          contentStyle={{
+                            borderRadius: "16px",
+                            border: "none",
+                            background: "#1d3557",
+                            color: "white",
+                          }}
+                        />
+
+                        <Bar
+                          dataKey="consultas"
+                          radius={[12, 12, 0, 0]}
+                          fill="#1d3557"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
 
                   <p className="text-xs text-gray-500 mt-4">
@@ -306,27 +341,6 @@ function Indicador({ titulo, valor, detalhe }) {
       <p className="text-xs text-gray-400 mt-1">
         {detalhe}
       </p>
-    </div>
-  );
-}
-
-function Barra({ dia, valor, altura }) {
-  return (
-    <div className="flex-1 h-full flex flex-col justify-end items-center gap-2">
-      <span className="text-xs font-semibold text-[#1d3557]">
-        {valor}
-      </span>
-
-      <div className="w-full bg-white rounded-full overflow-hidden flex items-end h-full">
-        <div
-          className="w-full bg-[#1d3557] rounded-full transition-all"
-          style={{ height: altura }}
-        />
-      </div>
-
-      <span className="text-xs text-gray-500">
-        {dia}
-      </span>
     </div>
   );
 }
