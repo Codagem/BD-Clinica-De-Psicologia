@@ -298,6 +298,8 @@ Sendo está a forma como os funcionarios veram as fichas no sistema.
 
 <h2>💰 Custo de Implementação</h2>
 
+<p> O custo de implementação deste programa</p>
+
 <hr>
 
 <p align="center">
