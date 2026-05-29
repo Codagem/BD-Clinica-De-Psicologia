@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "framer-motion": "^12.40.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.16.0",
     "next": "16.2.4",
     "pg": "^8.21.0",

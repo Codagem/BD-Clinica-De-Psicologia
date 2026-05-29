@@ -9,6 +9,8 @@ import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   ResponsiveContainer,
   BarChart,
@@ -363,6 +365,67 @@ export default function Financeiro() {
     if (!data) return "-";
     return new Date(data).toLocaleDateString("pt-BR");
   }
+  // =========================================
+// EXPORTAR PDF FINANCEIRO
+// =========================================
+
+function exportarPDF() {
+  const doc = new jsPDF();
+
+  doc.setFontSize(20);
+  doc.text("Clínica de Psicologia", 14, 20);
+
+  doc.setFontSize(11);
+  doc.text(
+    `Relatório Financeiro - ${new Date().toLocaleDateString("pt-BR")}`,
+    14,
+    30
+  );
+
+  doc.setFontSize(12);
+
+  doc.text(
+    `Receitas: ${formatarValor(totalPagamentosFiltrados)}`,
+    14,
+    45
+  );
+
+  doc.text(
+    `Despesas: ${formatarValor(totalDespesasFiltradas)}`,
+    14,
+    55
+  );
+
+  doc.text(
+    `Saldo: ${formatarValor(saldoFiltrado)}`,
+    14,
+    65
+  );
+
+  autoTable(doc, {
+    startY: 80,
+
+    head: [
+      [
+        "Paciente",
+        "Valor",
+        "Forma",
+        "Status",
+        "Data"
+      ]
+    ],
+
+    body: pagamentosFiltrados.map((item) => [
+      item.paciente || "-",
+      formatarValor(item.valor),
+      item.forma_pagamento || "-",
+      item.status_pagamento || "-",
+      formatarData(item.data_pagamento)
+    ])
+  });
+
+  doc.save("financeiro-clinica.pdf");
+}
 
   // =========================================
   // FORMATAR VALOR

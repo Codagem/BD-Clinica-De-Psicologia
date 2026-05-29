@@ -9,7 +9,14 @@ import Protegido from "../components/Protegido";
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { motion } from "framer-motion";
-import { CalendarDays, User, Video, MapPin } from "lucide-react";
+import {
+  CalendarDays,
+  User,
+  Video,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 // =========================================
 // COMPONENTE PRINCIPAL
@@ -36,6 +43,12 @@ export default function Consultas() {
   const [filtroData, setFiltroData] = useState("");
 
   // =========================================
+  // STATE DA AGENDA DIÁRIA
+  // =========================================
+
+  const [dataAgenda, setDataAgenda] = useState(dataHojeInput());
+
+  // =========================================
   // STATES DO FORMULÁRIO
   // =========================================
 
@@ -46,6 +59,19 @@ export default function Consultas() {
   const [tipoAtendimento, setTipoAtendimento] = useState("Presencial");
   const [statusConsulta, setStatusConsulta] = useState("Agendado");
   const [observacoes, setObservacoes] = useState("");
+
+  // =========================================
+  // DATA DE HOJE INPUT
+  // =========================================
+
+  function dataHojeInput() {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+    const dia = String(hoje.getDate()).padStart(2, "0");
+
+    return `${ano}-${mes}-${dia}`;
+  }
 
   // =========================================
   // CARREGAR PACIENTES
@@ -225,6 +251,21 @@ export default function Consultas() {
   }
 
   // =========================================
+  // MUDAR DIA DA AGENDA
+  // =========================================
+
+  function mudarDiaAgenda(dias) {
+    const data = new Date(`${dataAgenda}T00:00:00`);
+    data.setDate(data.getDate() + dias);
+
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const dia = String(data.getDate()).padStart(2, "0");
+
+    setDataAgenda(`${ano}-${mes}-${dia}`);
+  }
+
+  // =========================================
   // CARREGAMENTO INICIAL
   // =========================================
 
@@ -261,6 +302,15 @@ export default function Consultas() {
     return "bg-[#e8eadf] text-[#1d3557]";
   }
 
+  function bordaStatus(status) {
+    if (status === "Confirmado") return "border-green-300";
+    if (status === "Realizado") return "border-blue-300";
+    if (status === "Cancelado") return "border-red-300";
+    if (status === "Faltou") return "border-orange-300";
+
+    return "border-[#1d3557]/20";
+  }
+
   // =========================================
   // FILTRAR CONSULTAS
   // =========================================
@@ -290,6 +340,28 @@ export default function Consultas() {
     const dataB = `${b.data_consulta || ""} ${b.horario || ""}`;
     return dataA.localeCompare(dataB);
   });
+
+  // =========================================
+  // HORÁRIOS PADRÃO DA AGENDA
+  // =========================================
+
+  const horariosAgenda = [
+    "08:00",
+    "09:00",
+    "10:00",
+    "11:00",
+    "12:00",
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00",
+    "17:00",
+    "18:00",
+  ];
+
+  const consultasDoDiaAgenda = consultasFiltradas
+    .filter((consulta) => formatarDataInput(consulta.data_consulta) === dataAgenda)
+    .sort((a, b) => String(a.horario || "").localeCompare(String(b.horario || "")));
 
   // =========================================
   // CÁLCULOS DOS CARDS
@@ -332,10 +404,6 @@ export default function Consultas() {
         <Sidebar />
 
         <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
-          {/* =========================================
-              CABEÇALHO
-          ========================================= */}
-
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <div>
               <p className="text-[#2b4c7e] font-semibold mb-2">
@@ -365,20 +433,12 @@ export default function Consultas() {
             </button>
           </div>
 
-          {/* =========================================
-              CARDS DE RESUMO
-          ========================================= */}
-
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <ResumoCard titulo="Total de consultas" valor={totalConsultas} />
             <ResumoCard titulo="Agendadas" valor={agendadas} />
             <ResumoCard titulo="Confirmadas" valor={confirmadas} />
             <ResumoCard titulo="Realizadas" valor={realizadas} destaque />
           </div>
-
-          {/* =========================================
-              FORMULÁRIO
-          ========================================= */}
 
           {mostrarFormulario && (
             <motion.div
@@ -487,10 +547,6 @@ export default function Consultas() {
             </motion.div>
           )}
 
-          {/* =========================================
-              FILTROS PROFISSIONAIS
-          ========================================= */}
-
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
               <div>
@@ -569,150 +625,158 @@ export default function Consultas() {
           </div>
 
           {/* =========================================
-              AGENDA VISUAL
+              AGENDA DIÁRIA ESTILO CALENDÁRIO
           ========================================= */}
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.7fr] gap-6 mb-8">
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-[#1d3557]">
-                    Agenda visual
-                  </h2>
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+            <div className="p-6 border-b border-gray-100 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1d3557]">
+                  Agenda diária
+                </h2>
 
-                  <p className="text-gray-500 text-sm mt-1">
-                    Visualização profissional dos atendimentos filtrados.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Legenda cor="bg-[#e8eadf]" texto="Agendado" />
-                  <Legenda cor="bg-green-100" texto="Confirmado" />
-                  <Legenda cor="bg-blue-100" texto="Realizado" />
-                  <Legenda cor="bg-red-100" texto="Cancelado" />
-                </div>
+                <p className="text-gray-500 text-sm mt-1">
+                  Visualização por horário no dia selecionado.
+                </p>
               </div>
 
-              <div className="overflow-x-auto">
-                <div className="min-w-[900px]">
-                  {consultasOrdenadas.map((consulta) => (
-                    <motion.div
-                      key={consulta.id_consulta}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="grid grid-cols-[130px_1fr] border-b border-gray-100 hover:bg-[#fbfaf7] transition"
-                    >
-                      <div className="p-6 border-r border-gray-100 bg-[#faf8f3]">
-                        <p className="text-sm text-gray-500">
-                          {formatarData(consulta.data_consulta)}
-                        </p>
+              <div className="flex flex-col md:flex-row md:items-center gap-3">
+                <button
+                  onClick={() => mudarDiaAgenda(-1)}
+                  className="bg-[#f3f1eb] text-[#1d3557] p-3 rounded-2xl hover:bg-gray-200 transition"
+                >
+                  <ChevronLeft size={20} />
+                </button>
 
-                        <h3 className="text-2xl font-bold text-[#1d3557] mt-1">
-                          {formatarHora(consulta.horario)}
-                        </h3>
-                      </div>
+                <input
+                  type="date"
+                  value={dataAgenda}
+                  onChange={(e) => setDataAgenda(e.target.value)}
+                  className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                />
 
-                      <div className="p-5">
-                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                          <div>
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <h3 className="text-xl font-bold text-[#1d3557]">
-                                {consulta.paciente || "Paciente"}
-                              </h3>
+                <button
+                  onClick={() => mudarDiaAgenda(1)}
+                  className="bg-[#f3f1eb] text-[#1d3557] p-3 rounded-2xl hover:bg-gray-200 transition"
+                >
+                  <ChevronRight size={20} />
+                </button>
 
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-medium ${corStatus(
-                                  consulta.status_consulta
-                                )}`}
-                              >
-                                {consulta.status_consulta}
-                              </span>
-                            </div>
-
-                            <div className="flex flex-wrap gap-3 mt-4">
-                              <Tag
-                                icon={<User size={14} />}
-                                texto={consulta.psicologo || "-"}
-                              />
-
-                              <Tag
-                                icon={
-                                  consulta.tipo_atendimento === "Online" ? (
-                                    <Video size={14} />
-                                  ) : (
-                                    <MapPin size={14} />
-                                  )
-                                }
-                                texto={consulta.tipo_atendimento || "-"}
-                              />
-                            </div>
-
-                            {consulta.observacoes && (
-                              <p className="text-gray-500 mt-4 text-sm">
-                                {consulta.observacoes}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="flex flex-col items-start lg:items-end gap-3">
-                            <h4 className="font-bold text-[#1d3557]">
-                              #{consulta.id_consulta}
-                            </h4>
-
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => editarConsulta(consulta)}
-                                className="bg-[#1d3557] text-white px-4 py-2 rounded-xl text-sm hover:opacity-90 transition"
-                              >
-                                Editar
-                              </button>
-
-                              <button
-                                onClick={() =>
-                                  excluirConsulta(consulta.id_consulta)
-                                }
-                                className="bg-red-500 text-white px-4 py-2 rounded-xl text-sm hover:bg-red-600 transition"
-                              >
-                                Excluir
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-
-                  {consultasFiltradas.length === 0 && (
-                    <div className="p-16 text-center text-gray-500">
-                      Nenhuma consulta encontrada com os filtros atuais.
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => setDataAgenda(dataHojeInput())}
+                  className="bg-[#1d3557] text-white px-5 py-3 rounded-2xl hover:opacity-90 transition"
+                >
+                  Hoje
+                </button>
               </div>
             </div>
 
-            <div className="bg-[#1d3557] rounded-3xl p-6 text-white overflow-hidden relative">
-              <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
-                    <CalendarDays size={24} />
-                  </div>
+            <div className="p-4 md:p-6">
+              <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6">
+                <div className="space-y-3">
+                  {horariosAgenda.map((hora) => {
+                    const consultasHorario = consultasDoDiaAgenda.filter(
+                      (consulta) => formatarHora(consulta.horario) === hora
+                    );
 
-                  <div>
-                    <p className="text-blue-100 text-sm">Resumo da agenda</p>
-                    <h2 className="text-2xl font-bold">Rotina da clínica</h2>
-                  </div>
+                    return (
+                      <div
+                        key={hora}
+                        className="grid grid-cols-1 md:grid-cols-[90px_1fr] gap-3"
+                      >
+                        <div className="bg-[#f3f1eb] rounded-2xl p-4 text-[#1d3557] font-bold text-center">
+                          {hora}
+                        </div>
+
+                        <div className="min-h-[76px] bg-[#fbfaf7] rounded-2xl border border-gray-100 p-3">
+                          {consultasHorario.length > 0 ? (
+                            <div className="space-y-3">
+                              {consultasHorario.map((consulta) => (
+                                <div
+                                  key={consulta.id_consulta}
+                                  className={`bg-white border-l-4 ${bordaStatus(
+                                    consulta.status_consulta
+                                  )} rounded-2xl p-4 shadow-sm`}
+                                >
+                                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                    <div>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="font-bold text-[#1d3557]">
+                                          {consulta.paciente || "Paciente"}
+                                        </h3>
+
+                                        <span
+                                          className={`px-3 py-1 rounded-full text-xs font-medium ${corStatus(
+                                            consulta.status_consulta
+                                          )}`}
+                                        >
+                                          {consulta.status_consulta}
+                                        </span>
+                                      </div>
+
+                                      <p className="text-sm text-gray-500 mt-2">
+                                        Psicólogo: {consulta.psicologo || "-"}
+                                      </p>
+
+                                      <p className="text-sm text-gray-500">
+                                        Tipo: {consulta.tipo_atendimento || "-"}
+                                      </p>
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => editarConsulta(consulta)}
+                                        className="bg-[#1d3557] text-white px-4 py-2 rounded-xl text-sm"
+                                      >
+                                        Editar
+                                      </button>
+
+                                      <button
+                                        onClick={() =>
+                                          excluirConsulta(consulta.id_consulta)
+                                        }
+                                        className="bg-red-500 text-white px-4 py-2 rounded-xl text-sm"
+                                      >
+                                        Excluir
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="h-full min-h-[50px] flex items-center text-sm text-gray-400">
+                              Horário livre
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <AgendaMini titulo="Hoje" valor={consultasHoje.length} />
-                  <AgendaMini titulo="Filtradas" valor={consultasFiltradas.length} />
-                  <AgendaMini titulo="Online" valor={online} />
-                  <AgendaMini titulo="Presencial" valor={presenciais} />
+                <div className="bg-[#1d3557] rounded-3xl p-6 text-white h-fit">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
+                      <CalendarDays size={24} />
+                    </div>
+
+                    <div>
+                      <p className="text-blue-100 text-sm">Resumo do dia</p>
+                      <h2 className="text-2xl font-bold">
+                        {formatarData(dataAgenda)}
+                      </h2>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <AgendaMini titulo="No dia" valor={consultasDoDiaAgenda.length} />
+                    <AgendaMini titulo="Hoje" valor={consultasHoje.length} />
+                    <AgendaMini titulo="Online" valor={online} />
+                    <AgendaMini titulo="Presencial" valor={presenciais} />
+                  </div>
                 </div>
               </div>
-
-              <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-white/10" />
             </div>
           </div>
 
@@ -747,7 +811,7 @@ export default function Consultas() {
                 </thead>
 
                 <tbody className="text-black">
-                  {consultasFiltradas.map((consulta) => (
+                  {consultasOrdenadas.map((consulta) => (
                     <tr
                       key={consulta.id_consulta}
                       className="border-b border-gray-100 hover:bg-[#fbfaf7] transition"
@@ -804,7 +868,7 @@ export default function Consultas() {
                     </tr>
                   ))}
 
-                  {consultasFiltradas.length === 0 && (
+                  {consultasOrdenadas.length === 0 && (
                     <tr>
                       <td colSpan="8" className="p-8 text-center text-gray-500">
                         Nenhuma consulta encontrada com os filtros atuais.
@@ -845,30 +909,11 @@ function ResumoCard({ titulo, valor, destaque }) {
   );
 }
 
-function Tag({ icon, texto }) {
-  return (
-    <span className="inline-flex items-center gap-1 bg-white text-[#1d3557] border border-[#1d3557]/10 px-3 py-1 rounded-full text-xs font-medium">
-      {icon}
-      {texto}
-    </span>
-  );
-}
-
 function AgendaMini({ titulo, valor }) {
   return (
     <div className="bg-white/10 rounded-3xl p-4">
       <p className="text-blue-100 text-sm">{titulo}</p>
       <h3 className="text-3xl font-bold mt-2">{valor}</h3>
-    </div>
-  );
-}
-
-function Legenda({ cor, texto }) {
-  return (
-    <div className="flex items-center gap-2 bg-[#fbfaf7] px-3 py-2 rounded-2xl border border-gray-100">
-      <div className={`w-3 h-3 rounded-full ${cor}`} />
-
-      <span className="text-sm text-[#1d3557] font-medium">{texto}</span>
     </div>
   );
 }
