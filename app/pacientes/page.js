@@ -1,10 +1,18 @@
 "use client";
 
+// =========================================
+// IMPORTAÇÕES
+// =========================================
+
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import Sidebar from "../components/Sidebar";
 import Protegido from "../components/Protegido";
+
+// =========================================
+// FORMATAR CPF
+// =========================================
 
 function formatarCPF(valor) {
   valor = valor.replace(/\D/g, "");
@@ -14,6 +22,10 @@ function formatarCPF(valor) {
   return valor;
 }
 
+// =========================================
+// FORMATAR TELEFONE
+// =========================================
+
 function formatarTelefone(valor) {
   valor = valor.replace(/\D/g, "");
   valor = valor.replace(/^(\d{2})(\d)/g, "($1)$2");
@@ -21,15 +33,39 @@ function formatarTelefone(valor) {
   return valor;
 }
 
+// =========================================
+// COMPONENTE PRINCIPAL
+// =========================================
+
 export default function Pacientes() {
+  // =========================================
+  // STATES PRINCIPAIS
+  // =========================================
+
   const [pacientes, setPacientes] = useState([]);
+  const [consultas, setConsultas] = useState([]);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
+  const [pesquisa, setPesquisa] = useState("");
+
+  // =========================================
+  // STATE DO HISTÓRICO
+  // =========================================
+
+  const [pacienteHistorico, setPacienteHistorico] = useState(null);
+
+  // =========================================
+  // STATES DO FORMULÁRIO
+  // =========================================
+
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
   const [telefone, setTelefone] = useState("");
   const [profissao, setProfissao] = useState("");
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [editandoId, setEditandoId] = useState(null);
-  const [pesquisa, setPesquisa] = useState("");
+
+  // =========================================
+  // CARREGAR PACIENTES
+  // =========================================
 
   async function carregarPacientes() {
     const resposta = await fetch("/api/pacientes");
@@ -42,6 +78,26 @@ export default function Pacientes() {
       console.log(dados);
     }
   }
+
+  // =========================================
+  // CARREGAR CONSULTAS
+  // =========================================
+
+  async function carregarConsultas() {
+    const resposta = await fetch("/api/consultas");
+    const dados = await resposta.json();
+
+    if (Array.isArray(dados)) {
+      setConsultas(dados);
+    } else {
+      setConsultas([]);
+      console.log(dados);
+    }
+  }
+
+  // =========================================
+  // CADASTRAR OU EDITAR PACIENTE
+  // =========================================
 
   async function cadastrarPaciente() {
     try {
@@ -81,6 +137,10 @@ export default function Pacientes() {
     }
   }
 
+  // =========================================
+  // EXCLUIR PACIENTE
+  // =========================================
+
   async function deletarPaciente(id) {
     const confirmar = confirm("Deseja realmente excluir este paciente?");
     if (!confirmar) return;
@@ -99,14 +159,48 @@ export default function Pacientes() {
     }
   }
 
+  // =========================================
+  // EDITAR PACIENTE
+  // =========================================
+
   function editarPaciente(paciente) {
-    setNome(paciente.nome_completo);
-    setCpf(paciente.cpf);
-    setTelefone(paciente.telefone);
-    setProfissao(paciente.profissao);
+    setNome(paciente.nome_completo || "");
+    setCpf(paciente.cpf || "");
+    setTelefone(paciente.telefone || "");
+    setProfissao(paciente.profissao || "");
     setEditandoId(paciente.id_paciente);
     setMostrarFormulario(true);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }
+
+  // =========================================
+  // ABRIR HISTÓRICO
+  // =========================================
+
+  function abrirHistorico(paciente) {
+    setPacienteHistorico(paciente);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  // =========================================
+  // FECHAR HISTÓRICO
+  // =========================================
+
+  function fecharHistorico() {
+    setPacienteHistorico(null);
+  }
+
+  // =========================================
+  // LIMPAR FORMULÁRIO
+  // =========================================
 
   function limparFormulario() {
     setNome("");
@@ -117,13 +211,77 @@ export default function Pacientes() {
     setMostrarFormulario(false);
   }
 
+  // =========================================
+  // CARREGAMENTO INICIAL
+  // =========================================
+
+  useEffect(() => {
+    carregarPacientes();
+    carregarConsultas();
+  }, []);
+
+  // =========================================
+  // FILTRO DE PACIENTES
+  // =========================================
+
   const pacientesFiltrados = pacientes.filter((paciente) =>
     paciente.nome_completo?.toLowerCase().includes(pesquisa.toLowerCase())
   );
 
-  useEffect(() => {
-    carregarPacientes();
-  }, []);
+  // =========================================
+  // CONSULTAS DO PACIENTE SELECIONADO
+  // =========================================
+
+  const consultasDoPaciente = pacienteHistorico
+    ? consultas.filter(
+        (consulta) =>
+          Number(consulta.id_paciente) === Number(pacienteHistorico.id_paciente)
+      )
+    : [];
+
+  const consultasRealizadas = consultasDoPaciente.filter(
+    (consulta) => consulta.status_consulta === "Realizado"
+  );
+
+  const consultasPendentes = consultasDoPaciente.filter(
+    (consulta) =>
+      consulta.status_consulta === "Agendado" ||
+      consulta.status_consulta === "Confirmado"
+  );
+
+  // =========================================
+  // FORMATAR DATA
+  // =========================================
+
+  function formatarData(data) {
+    if (!data) return "-";
+    return new Date(data).toLocaleDateString("pt-BR");
+  }
+
+  // =========================================
+  // FORMATAR HORA
+  // =========================================
+
+  function formatarHora(hora) {
+    return hora?.slice(0, 5) || "-";
+  }
+
+  // =========================================
+  // COR DO STATUS
+  // =========================================
+
+  function corStatus(status) {
+    if (status === "Confirmado") return "bg-green-100 text-green-700";
+    if (status === "Realizado") return "bg-blue-100 text-blue-700";
+    if (status === "Cancelado") return "bg-red-100 text-red-700";
+    if (status === "Faltou") return "bg-orange-100 text-orange-700";
+
+    return "bg-[#e8eadf] text-[#1d3557]";
+  }
+
+  // =========================================
+  // TELA
+  // =========================================
 
   return (
     <Protegido>
@@ -131,6 +289,10 @@ export default function Pacientes() {
         <Sidebar />
 
         <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
+          {/* =========================================
+              CABEÇALHO
+          ========================================= */}
+
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-8">
             <div>
               <p className="text-[#2b4c7e] font-semibold mb-2">
@@ -154,11 +316,154 @@ export default function Pacientes() {
             </button>
           </div>
 
+          {/* =========================================
+              HISTÓRICO DO PACIENTE
+          ========================================= */}
+
+          {pacienteHistorico && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-3xl shadow-sm border border-gray-100 mb-8 overflow-hidden"
+            >
+              <div className="bg-[#1d3557] p-6 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <p className="text-blue-100 text-sm">Histórico do paciente</p>
+
+                  <h2 className="text-2xl md:text-3xl font-bold mt-1">
+                    {pacienteHistorico.nome_completo}
+                  </h2>
+
+                  <p className="text-blue-100 text-sm mt-2">
+                    Paciente #{pacienteHistorico.id_paciente}
+                  </p>
+                </div>
+
+                <button
+                  onClick={fecharHistorico}
+                  className="bg-white/10 text-white px-5 py-3 rounded-2xl hover:bg-white/20 transition"
+                >
+                  Fechar histórico
+                </button>
+              </div>
+
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <HistoricoCard
+                    titulo="Total de consultas"
+                    valor={consultasDoPaciente.length}
+                  />
+
+                  <HistoricoCard
+                    titulo="Realizadas"
+                    valor={consultasRealizadas.length}
+                  />
+
+                  <HistoricoCard
+                    titulo="Pendentes"
+                    valor={consultasPendentes.length}
+                  />
+
+                  <HistoricoCard
+                    titulo="Status"
+                    valor="Ativo"
+                    destaque
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
+                    <h3 className="text-xl font-bold text-[#1d3557] mb-4">
+                      Dados do paciente
+                    </h3>
+
+                    <div className="space-y-3 text-sm">
+                      <Info label="CPF" valor={pacienteHistorico.cpf || "-"} />
+                      <Info
+                        label="Telefone"
+                        valor={pacienteHistorico.telefone || "-"}
+                      />
+                      <Info
+                        label="Profissão"
+                        valor={pacienteHistorico.profissao || "-"}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-2 bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
+                    <h3 className="text-xl font-bold text-[#1d3557] mb-4">
+                      Consultas do paciente
+                    </h3>
+
+                    <div className="space-y-3">
+                      {consultasDoPaciente.map((consulta) => (
+                        <div
+                          key={consulta.id_consulta}
+                          className="bg-white rounded-2xl p-4 border border-gray-100"
+                        >
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <div>
+                              <p className="font-bold text-[#1d3557]">
+                                {formatarData(consulta.data_consulta)} às{" "}
+                                {formatarHora(consulta.horario)}
+                              </p>
+
+                              <p className="text-sm text-gray-500 mt-1">
+                                Psicólogo: {consulta.psicologo || "-"}
+                              </p>
+
+                              <p className="text-sm text-gray-500">
+                                Tipo: {consulta.tipo_atendimento || "-"}
+                              </p>
+                            </div>
+
+                            <span
+                              className={`px-3 py-1 rounded-full text-sm font-medium w-fit ${corStatus(
+                                consulta.status_consulta
+                              )}`}
+                            >
+                              {consulta.status_consulta}
+                            </span>
+                          </div>
+
+                          {consulta.observacoes && (
+                            <p className="text-sm text-gray-600 mt-3">
+                              {consulta.observacoes}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+
+                      {consultasDoPaciente.length === 0 && (
+                        <div className="p-6 text-center text-gray-500">
+                          Nenhuma consulta encontrada para este paciente.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* =========================================
+              CARDS DE RESUMO
+          ========================================= */}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
             <ResumoCard titulo="Total de pacientes" valor={pacientes.length} />
-            <ResumoCard titulo="Resultados da busca" valor={pacientesFiltrados.length} />
+
+            <ResumoCard
+              titulo="Resultados da busca"
+              valor={pacientesFiltrados.length}
+            />
+
             <ResumoCard titulo="Status" valor="Base ativa" destaque />
           </div>
+
+          {/* =========================================
+              FORMULÁRIO
+          ========================================= */}
 
           {mostrarFormulario && (
             <motion.div
@@ -226,6 +531,10 @@ export default function Pacientes() {
             </motion.div>
           )}
 
+          {/* =========================================
+              PESQUISA
+          ========================================= */}
+
           <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
             <input
               type="text"
@@ -235,6 +544,10 @@ export default function Pacientes() {
               className="border border-gray-200 p-4 rounded-2xl w-full text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
             />
           </div>
+
+          {/* =========================================
+              LISTA DE PACIENTES
+          ========================================= */}
 
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
@@ -248,7 +561,7 @@ export default function Pacientes() {
             </div>
 
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full min-w-[900px]">
+              <table className="w-full min-w-[1000px]">
                 <thead className="bg-[#f3f1eb] text-[#1d3557]">
                   <tr>
                     <th className="text-left p-4">ID</th>
@@ -292,6 +605,13 @@ export default function Pacientes() {
 
                       <td className="p-4">
                         <div className="flex gap-2">
+                          <button
+                            onClick={() => abrirHistorico(paciente)}
+                            className="bg-[#1d3557] text-white px-4 py-2 rounded-2xl hover:opacity-90 transition"
+                          >
+                            Histórico
+                          </button>
+
                           <button
                             onClick={() => editarPaciente(paciente)}
                             className="bg-[#2b4c7e] text-white px-4 py-2 rounded-2xl hover:opacity-90 transition"
@@ -353,20 +673,29 @@ export default function Pacientes() {
                     <Info label="Profissão" valor={paciente.profissao || "-"} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mt-5">
+                  <div className="grid grid-cols-1 gap-3 mt-5">
                     <button
-                      onClick={() => editarPaciente(paciente)}
-                      className="bg-[#2b4c7e] text-white py-3 rounded-2xl hover:opacity-90 transition"
+                      onClick={() => abrirHistorico(paciente)}
+                      className="bg-[#1d3557] text-white py-3 rounded-2xl hover:opacity-90 transition"
                     >
-                      Editar
+                      Histórico
                     </button>
 
-                    <button
-                      onClick={() => deletarPaciente(paciente.id_paciente)}
-                      className="bg-red-500 text-white py-3 rounded-2xl hover:bg-red-600 transition"
-                    >
-                      Excluir
-                    </button>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => editarPaciente(paciente)}
+                        className="bg-[#2b4c7e] text-white py-3 rounded-2xl hover:opacity-90 transition"
+                      >
+                        Editar
+                      </button>
+
+                      <button
+                        onClick={() => deletarPaciente(paciente.id_paciente)}
+                        className="bg-red-500 text-white py-3 rounded-2xl hover:bg-red-600 transition"
+                      >
+                        Excluir
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -384,6 +713,10 @@ export default function Pacientes() {
   );
 }
 
+// =========================================
+// CARD DE RESUMO
+// =========================================
+
 function ResumoCard({ titulo, valor, destaque }) {
   return (
     <motion.div
@@ -399,12 +732,36 @@ function ResumoCard({ titulo, valor, destaque }) {
         {titulo}
       </p>
 
-      <h2 className="text-3xl md:text-4xl font-bold mt-3">
-        {valor}
-      </h2>
+      <h2 className="text-3xl md:text-4xl font-bold mt-3">{valor}</h2>
     </motion.div>
   );
 }
+
+// =========================================
+// CARD DO HISTÓRICO
+// =========================================
+
+function HistoricoCard({ titulo, valor, destaque }) {
+  return (
+    <div
+      className={`rounded-3xl p-5 border ${
+        destaque
+          ? "bg-[#1d3557] border-[#1d3557] text-white"
+          : "bg-[#fbfaf7] border-gray-100 text-[#1d3557]"
+      }`}
+    >
+      <p className={`text-sm ${destaque ? "text-blue-100" : "text-gray-500"}`}>
+        {titulo}
+      </p>
+
+      <h3 className="text-2xl font-bold mt-2">{valor}</h3>
+    </div>
+  );
+}
+
+// =========================================
+// INFO
+// =========================================
 
 function Info({ label, valor }) {
   return (
