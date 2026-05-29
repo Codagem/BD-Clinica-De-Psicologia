@@ -5,6 +5,8 @@ export async function GET() {
     const result = await pool.query(`
       SELECT
         c.id_consulta,
+        c.id_paciente,
+        c.id_psicologo,
         p.nome_completo AS paciente,
         ps.nome AS psicologo,
         c.data_consulta,
@@ -55,8 +57,8 @@ export async function POST(req) {
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       `,
       [
-        id_paciente,
-        id_psicologo,
+        Number(id_paciente),
+        Number(id_psicologo),
         data_consulta,
         horario,
         tipo_atendimento,
@@ -67,6 +69,92 @@ export async function POST(req) {
 
     return Response.json({
       mensagem: "Consulta cadastrada",
+    });
+  } catch (error) {
+    return Response.json({
+      erro: error.message,
+    });
+  }
+}
+
+export async function PUT(req) {
+  try {
+    const body = await req.json();
+
+    const {
+      id_consulta,
+      id_paciente,
+      id_psicologo,
+      data_consulta,
+      horario,
+      tipo_atendimento,
+      status_consulta,
+      observacoes,
+    } = body;
+
+    if (!id_consulta) {
+      return Response.json({
+        erro: "ID da consulta não informado.",
+      });
+    }
+
+    await pool.query(
+      `
+      UPDATE consultas
+      SET
+        id_paciente = $1,
+        id_psicologo = $2,
+        data_consulta = $3,
+        horario = $4,
+        tipo_atendimento = $5,
+        status_consulta = $6,
+        observacoes = $7
+      WHERE id_consulta = $8
+      `,
+      [
+        Number(id_paciente),
+        Number(id_psicologo),
+        data_consulta,
+        horario,
+        tipo_atendimento,
+        status_consulta,
+        observacoes,
+        Number(id_consulta),
+      ]
+    );
+
+    return Response.json({
+      mensagem: "Consulta atualizada",
+    });
+  } catch (error) {
+    return Response.json({
+      erro: error.message,
+    });
+  }
+}
+
+export async function DELETE(req) {
+  try {
+    const body = await req.json();
+
+    const { id_consulta } = body;
+
+    if (!id_consulta) {
+      return Response.json({
+        erro: "ID da consulta não informado.",
+      });
+    }
+
+    await pool.query(
+      `
+      DELETE FROM consultas
+      WHERE id_consulta = $1
+      `,
+      [Number(id_consulta)]
+    );
+
+    return Response.json({
+      mensagem: "Consulta excluída",
     });
   } catch (error) {
     return Response.json({

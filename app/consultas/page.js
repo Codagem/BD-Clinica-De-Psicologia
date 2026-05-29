@@ -1,5 +1,9 @@
 "use client";
 
+// =========================================
+// IMPORTAÇÕES
+// =========================================
+
 import toast from "react-hot-toast";
 import Protegido from "../components/Protegido";
 import { useEffect, useState } from "react";
@@ -7,15 +11,27 @@ import Sidebar from "../components/Sidebar";
 import { motion } from "framer-motion";
 import {
   CalendarDays,
-  Clock,
   User,
   Video,
   MapPin,
 } from "lucide-react";
 
+// =========================================
+// COMPONENTE PRINCIPAL
+// =========================================
+
 export default function Consultas() {
+  // =========================================
+  // STATES PRINCIPAIS
+  // =========================================
+
   const [consultas, setConsultas] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [editandoId, setEditandoId] = useState(null);
+
+  // =========================================
+  // STATES DO FORMULÁRIO
+  // =========================================
 
   const [idPaciente, setIdPaciente] = useState("");
   const [idPsicologo, setIdPsicologo] = useState("");
@@ -25,20 +41,35 @@ export default function Consultas() {
   const [statusConsulta, setStatusConsulta] = useState("Agendado");
   const [observacoes, setObservacoes] = useState("");
 
+  // =========================================
+  // CARREGAR CONSULTAS
+  // =========================================
+
   async function carregarConsultas() {
     const resposta = await fetch("/api/consultas");
     const dados = await resposta.json();
-    setConsultas(dados);
+
+    if (Array.isArray(dados)) {
+      setConsultas(dados);
+    } else {
+      setConsultas([]);
+      console.log(dados);
+    }
   }
 
-  async function cadastrarConsulta() {
+  // =========================================
+  // CADASTRAR OU EDITAR CONSULTA
+  // =========================================
+
+  async function salvarConsulta() {
     try {
-      await fetch("/api/consultas", {
-        method: "POST",
+      const resposta = await fetch("/api/consultas", {
+        method: editandoId ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          id_consulta: editandoId,
           id_paciente: idPaciente,
           id_psicologo: idPsicologo,
           data_consulta: dataConsulta,
@@ -49,30 +80,116 @@ export default function Consultas() {
         }),
       });
 
-      toast.success("Consulta cadastrada com sucesso!");
+      const resultado = await resposta.json();
+
+      if (resultado.erro) {
+        toast.error(resultado.erro);
+        return;
+      }
+
+      toast.success(
+        editandoId
+          ? "Consulta atualizada com sucesso!"
+          : "Consulta cadastrada com sucesso!"
+      );
 
       carregarConsultas();
-
-      setIdPaciente("");
-      setIdPsicologo("");
-      setDataConsulta("");
-      setHorario("");
-      setTipoAtendimento("Presencial");
-      setStatusConsulta("Agendado");
-      setObservacoes("");
-      setMostrarFormulario(false);
+      limparFormulario();
     } catch (error) {
-      toast.error("Erro ao cadastrar consulta.");
+      toast.error("Erro ao salvar consulta.");
     }
   }
+
+  // =========================================
+  // EDITAR CONSULTA
+  // =========================================
+
+  function editarConsulta(consulta) {
+    setEditandoId(consulta.id_consulta);
+    setIdPaciente(consulta.id_paciente || "");
+    setIdPsicologo(consulta.id_psicologo || "");
+    setDataConsulta(formatarDataInput(consulta.data_consulta));
+    setHorario(formatarHora(consulta.horario));
+    setTipoAtendimento(consulta.tipo_atendimento || "Presencial");
+    setStatusConsulta(consulta.status_consulta || "Agendado");
+    setObservacoes(consulta.observacoes || "");
+    setMostrarFormulario(true);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
+  // =========================================
+  // EXCLUIR CONSULTA
+  // =========================================
+
+  async function excluirConsulta(idConsulta) {
+    const confirmar = confirm("Deseja realmente excluir esta consulta?");
+    if (!confirmar) return;
+
+    try {
+      const resposta = await fetch("/api/consultas", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id_consulta: idConsulta,
+        }),
+      });
+
+      const resultado = await resposta.json();
+
+      if (resultado.erro) {
+        toast.error(resultado.erro);
+        return;
+      }
+
+      toast.success("Consulta excluída com sucesso!");
+      carregarConsultas();
+    } catch (error) {
+      toast.error("Erro ao excluir consulta.");
+    }
+  }
+
+  // =========================================
+  // LIMPAR FORMULÁRIO
+  // =========================================
+
+  function limparFormulario() {
+    setEditandoId(null);
+    setIdPaciente("");
+    setIdPsicologo("");
+    setDataConsulta("");
+    setHorario("");
+    setTipoAtendimento("Presencial");
+    setStatusConsulta("Agendado");
+    setObservacoes("");
+    setMostrarFormulario(false);
+  }
+
+  // =========================================
+  // CARREGAMENTO INICIAL
+  // =========================================
 
   useEffect(() => {
     carregarConsultas();
   }, []);
 
+  // =========================================
+  // FUNÇÕES DE FORMATAÇÃO
+  // =========================================
+
   function formatarData(data) {
     if (!data) return "-";
     return new Date(data).toLocaleDateString("pt-BR");
+  }
+
+  function formatarDataInput(data) {
+    if (!data) return "";
+    return String(data).slice(0, 10);
   }
 
   function formatarHora(hora) {
@@ -87,6 +204,10 @@ export default function Consultas() {
 
     return "bg-[#e8eadf] text-[#1d3557]";
   }
+
+  // =========================================
+  // CÁLCULOS DOS CARDS
+  // =========================================
 
   const totalConsultas = consultas.length;
 
@@ -121,12 +242,20 @@ export default function Consultas() {
     (consulta) => consulta.tipo_atendimento === "Presencial"
   ).length;
 
+  // =========================================
+  // TELA
+  // =========================================
+
   return (
     <Protegido>
       <div className="flex min-h-screen bg-[#fbfaf7]">
         <Sidebar />
 
         <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
+          {/* =========================================
+              CABEÇALHO
+          ========================================= */}
+
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <div>
               <p className="text-[#2b4c7e] font-semibold mb-2">
@@ -143,12 +272,22 @@ export default function Consultas() {
             </div>
 
             <button
-              onClick={() => setMostrarFormulario(!mostrarFormulario)}
+              onClick={() => {
+                if (mostrarFormulario) {
+                  limparFormulario();
+                } else {
+                  setMostrarFormulario(true);
+                }
+              }}
               className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
             >
               + Nova Consulta
             </button>
           </div>
+
+          {/* =========================================
+              CARDS DE RESUMO
+          ========================================= */}
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <ResumoCard titulo="Total de consultas" valor={totalConsultas} />
@@ -157,6 +296,10 @@ export default function Consultas() {
             <ResumoCard titulo="Realizadas" valor={realizadas} destaque />
           </div>
 
+          {/* =========================================
+              FORMULÁRIO
+          ========================================= */}
+
           {mostrarFormulario && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
@@ -164,7 +307,7 @@ export default function Consultas() {
               className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8"
             >
               <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
-                Nova Consulta
+                {editandoId ? "Editar Consulta" : "Nova Consulta"}
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -228,14 +371,27 @@ export default function Consultas() {
                 />
               </div>
 
-              <button
-                onClick={cadastrarConsulta}
-                className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl mt-5 shadow hover:opacity-90 transition"
-              >
-                Salvar Consulta
-              </button>
+              <div className="flex flex-col md:flex-row gap-3 mt-5">
+                <button
+                  onClick={salvarConsulta}
+                  className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 transition"
+                >
+                  {editandoId ? "Atualizar Consulta" : "Salvar Consulta"}
+                </button>
+
+                <button
+                  onClick={limparFormulario}
+                  className="bg-[#f3f1eb] text-[#1d3557] px-6 py-3 rounded-2xl hover:bg-gray-200 transition"
+                >
+                  Cancelar
+                </button>
+              </div>
             </motion.div>
           )}
+
+          {/* =========================================
+              AGENDA VISUAL
+          ========================================= */}
 
           <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.7fr] gap-6 mb-8">
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
@@ -320,19 +476,27 @@ export default function Consultas() {
                           </div>
 
                           <div className="flex flex-col items-start lg:items-end gap-3">
-                            <div className="text-left lg:text-right">
-                              <p className="text-sm text-gray-500">
-                                Consulta
-                              </p>
+                            <h4 className="font-bold text-[#1d3557]">
+                              #{consulta.id_consulta}
+                            </h4>
 
-                              <h4 className="font-bold text-[#1d3557]">
-                                #{consulta.id_consulta}
-                              </h4>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => editarConsulta(consulta)}
+                                className="bg-[#1d3557] text-white px-4 py-2 rounded-xl text-sm hover:opacity-90 transition"
+                              >
+                                Editar
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  excluirConsulta(consulta.id_consulta)
+                                }
+                                className="bg-red-500 text-white px-4 py-2 rounded-xl text-sm hover:bg-red-600 transition"
+                              >
+                                Excluir
+                              </button>
                             </div>
-
-                            <button className="bg-[#1d3557] text-white px-5 py-2 rounded-2xl text-sm hover:opacity-90 transition">
-                              Ver detalhes
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -367,39 +531,15 @@ export default function Consultas() {
                   <AgendaMini titulo="Online" valor={online} />
                   <AgendaMini titulo="Presencial" valor={presenciais} />
                 </div>
-
-                <div className="mt-6 bg-white/10 rounded-3xl p-5">
-                  <p className="text-blue-100 text-sm">
-                    Próximo atendimento
-                  </p>
-
-                  {consultasOrdenadas.length > 0 ? (
-                    <>
-                      <h3 className="text-xl font-bold mt-2">
-                        {consultasOrdenadas[0].paciente || "Paciente"}
-                      </h3>
-
-                      <p className="text-blue-100 text-sm mt-1">
-                        {formatarData(consultasOrdenadas[0].data_consulta)} às{" "}
-                        {formatarHora(consultasOrdenadas[0].horario)}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-blue-100 text-sm mt-2">
-                      Nenhum atendimento cadastrado.
-                    </p>
-                  )}
-                </div>
-
-                <p className="text-blue-100 text-sm mt-6">
-                  Use essa visão para acompanhar rapidamente o fluxo de
-                  atendimentos do dia.
-                </p>
               </div>
 
               <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-white/10" />
             </div>
           </div>
+
+          {/* =========================================
+              LISTA DE CONSULTAS
+          ========================================= */}
 
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
@@ -413,7 +553,7 @@ export default function Consultas() {
             </div>
 
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full min-w-[1000px]">
+              <table className="w-full min-w-[1100px]">
                 <thead className="bg-[#f3f1eb] text-[#1d3557]">
                   <tr>
                     <th className="text-left p-4">Paciente</th>
@@ -423,6 +563,7 @@ export default function Consultas() {
                     <th className="text-left p-4">Tipo</th>
                     <th className="text-left p-4">Status</th>
                     <th className="text-left p-4">Observações</th>
+                    <th className="text-left p-4">Ações</th>
                   </tr>
                 </thead>
 
@@ -461,12 +602,32 @@ export default function Consultas() {
                       <td className="p-4 text-gray-600">
                         {consulta.observacoes || "-"}
                       </td>
+
+                      <td className="p-4">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => editarConsulta(consulta)}
+                            className="bg-[#1d3557] text-white px-4 py-2 rounded-xl text-sm"
+                          >
+                            Editar
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              excluirConsulta(consulta.id_consulta)
+                            }
+                            className="bg-red-500 text-white px-4 py-2 rounded-xl text-sm"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
 
                   {consultas.length === 0 && (
                     <tr>
-                      <td colSpan="7" className="p-8 text-center text-gray-500">
+                      <td colSpan="8" className="p-8 text-center text-gray-500">
                         Nenhuma consulta cadastrada ainda.
                       </td>
                     </tr>
@@ -474,62 +635,16 @@ export default function Consultas() {
                 </tbody>
               </table>
             </div>
-
-            <div className="md:hidden p-4 space-y-4">
-              {consultas.map((consulta) => (
-                <div
-                  key={consulta.id_consulta}
-                  className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-[#1d3557] text-white flex items-center justify-center font-bold">
-                        {formatarHora(consulta.horario)}
-                      </div>
-
-                      <div>
-                        <h3 className="font-bold text-[#1d3557]">
-                          {consulta.paciente || "Paciente"}
-                        </h3>
-
-                        <p className="text-xs text-gray-500">
-                          {formatarData(consulta.data_consulta)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-medium ${corStatus(
-                        consulta.status_consulta
-                      )}`}
-                    >
-                      {consulta.status_consulta}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 text-sm">
-                    <Info label="Psicólogo" valor={consulta.psicologo || "-"} />
-                    <Info label="Tipo" valor={consulta.tipo_atendimento || "-"} />
-                    <Info
-                      label="Observações"
-                      valor={consulta.observacoes || "-"}
-                    />
-                  </div>
-                </div>
-              ))}
-
-              {consultas.length === 0 && (
-                <div className="p-8 text-center text-gray-500">
-                  Nenhuma consulta cadastrada ainda.
-                </div>
-              )}
-            </div>
           </div>
         </main>
       </div>
     </Protegido>
   );
 }
+
+// =========================================
+// COMPONENTES AUXILIARES
+// =========================================
 
 function ResumoCard({ titulo, valor, destaque }) {
   return (
@@ -546,9 +661,7 @@ function ResumoCard({ titulo, valor, destaque }) {
         {titulo}
       </p>
 
-      <h2 className="text-3xl font-bold mt-2">
-        {valor}
-      </h2>
+      <h2 className="text-3xl font-bold mt-2">{valor}</h2>
     </motion.div>
   );
 }
@@ -576,9 +689,7 @@ function Legenda({ cor, texto }) {
     <div className="flex items-center gap-2 bg-[#fbfaf7] px-3 py-2 rounded-2xl border border-gray-100">
       <div className={`w-3 h-3 rounded-full ${cor}`} />
 
-      <span className="text-sm text-[#1d3557] font-medium">
-        {texto}
-      </span>
+      <span className="text-sm text-[#1d3557] font-medium">{texto}</span>
     </div>
   );
 }
