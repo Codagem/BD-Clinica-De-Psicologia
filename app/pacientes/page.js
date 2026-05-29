@@ -199,6 +199,22 @@ export default function Pacientes() {
   }
 
   // =========================================
+  // NOVA CONSULTA
+  // =========================================
+
+  function novaConsulta() {
+    window.location.href = "/consultas";
+  }
+
+  // =========================================
+  // VER ANAMNESE
+  // =========================================
+
+  function verAnamnese() {
+    toast("Área de anamnese será integrada na próxima etapa.");
+  }
+
+  // =========================================
   // LIMPAR FORMULÁRIO
   // =========================================
 
@@ -239,15 +255,36 @@ export default function Pacientes() {
       )
     : [];
 
+  const consultasOrdenadas = [...consultasDoPaciente].sort((a, b) => {
+    const dataA = `${a.data_consulta || ""} ${a.horario || ""}`;
+    const dataB = `${b.data_consulta || ""} ${b.horario || ""}`;
+    return dataB.localeCompare(dataA);
+  });
+
   const consultasRealizadas = consultasDoPaciente.filter(
     (consulta) => consulta.status_consulta === "Realizado"
   );
 
-  const consultasPendentes = consultasDoPaciente.filter(
-    (consulta) =>
-      consulta.status_consulta === "Agendado" ||
-      consulta.status_consulta === "Confirmado"
-  );
+  const consultasPendentes = consultasDoPaciente
+    .filter(
+      (consulta) =>
+        consulta.status_consulta === "Agendado" ||
+        consulta.status_consulta === "Confirmado"
+    )
+    .sort((a, b) => {
+      const dataA = `${a.data_consulta || ""} ${a.horario || ""}`;
+      const dataB = `${b.data_consulta || ""} ${b.horario || ""}`;
+      return dataA.localeCompare(dataB);
+    });
+
+  const proximaConsulta = consultasPendentes[0];
+
+  const ultimaConsulta = [...consultasDoPaciente]
+    .sort((a, b) => {
+      const dataA = `${a.data_consulta || ""} ${a.horario || ""}`;
+      const dataB = `${b.data_consulta || ""} ${b.horario || ""}`;
+      return dataB.localeCompare(dataA);
+    })[0];
 
   // =========================================
   // FORMATAR DATA
@@ -328,7 +365,7 @@ export default function Pacientes() {
             >
               <div className="bg-[#1d3557] p-6 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <p className="text-blue-100 text-sm">Histórico do paciente</p>
+                  <p className="text-blue-100 text-sm">Prontuário do paciente</p>
 
                   <h2 className="text-2xl md:text-3xl font-bold mt-1">
                     {pacienteHistorico.nome_completo}
@@ -339,12 +376,28 @@ export default function Pacientes() {
                   </p>
                 </div>
 
-                <button
-                  onClick={fecharHistorico}
-                  className="bg-white/10 text-white px-5 py-3 rounded-2xl hover:bg-white/20 transition"
-                >
-                  Fechar histórico
-                </button>
+                <div className="flex flex-col md:flex-row gap-3">
+                  <button
+                    onClick={novaConsulta}
+                    className="bg-white text-[#1d3557] px-5 py-3 rounded-2xl hover:bg-blue-50 transition"
+                  >
+                    Nova consulta
+                  </button>
+
+                  <button
+                    onClick={() => editarPaciente(pacienteHistorico)}
+                    className="bg-white/10 text-white px-5 py-3 rounded-2xl hover:bg-white/20 transition"
+                  >
+                    Editar paciente
+                  </button>
+
+                  <button
+                    onClick={fecharHistorico}
+                    className="bg-white/10 text-white px-5 py-3 rounded-2xl hover:bg-white/20 transition"
+                  >
+                    Fechar
+                  </button>
+                </div>
               </div>
 
               <div className="p-6">
@@ -360,46 +413,91 @@ export default function Pacientes() {
                   />
 
                   <HistoricoCard
-                    titulo="Pendentes"
-                    valor={consultasPendentes.length}
+                    titulo="Próxima consulta"
+                    valor={
+                      proximaConsulta
+                        ? `${formatarData(proximaConsulta.data_consulta)}`
+                        : "Sem agenda"
+                    }
+                    descricao={
+                      proximaConsulta
+                        ? `${formatarHora(proximaConsulta.horario)}`
+                        : "Nenhum horário"
+                    }
                   />
 
-                  <HistoricoCard
-                    titulo="Status"
-                    valor="Ativo"
-                    destaque
-                  />
+                  <HistoricoCard titulo="Status" valor="Ativo" destaque />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
-                    <h3 className="text-xl font-bold text-[#1d3557] mb-4">
-                      Dados do paciente
-                    </h3>
+                  <div className="space-y-6">
+                    <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
+                      <h3 className="text-xl font-bold text-[#1d3557] mb-4">
+                        Dados do paciente
+                      </h3>
 
-                    <div className="space-y-3 text-sm">
-                      <Info label="CPF" valor={pacienteHistorico.cpf || "-"} />
-                      <Info
-                        label="Telefone"
-                        valor={pacienteHistorico.telefone || "-"}
-                      />
-                      <Info
-                        label="Profissão"
-                        valor={pacienteHistorico.profissao || "-"}
-                      />
+                      <div className="space-y-3 text-sm">
+                        <Info label="CPF" valor={pacienteHistorico.cpf || "-"} />
+                        <Info
+                          label="Telefone"
+                          valor={pacienteHistorico.telefone || "-"}
+                        />
+                        <Info
+                          label="Profissão"
+                          valor={pacienteHistorico.profissao || "-"}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
+                      <h3 className="text-xl font-bold text-[#1d3557] mb-4">
+                        Resumo clínico
+                      </h3>
+
+                      <div className="space-y-3 text-sm">
+                        <Info
+                          label="Última consulta"
+                          valor={
+                            ultimaConsulta
+                              ? formatarData(ultimaConsulta.data_consulta)
+                              : "-"
+                          }
+                        />
+
+                        <Info
+                          label="Próxima consulta"
+                          valor={
+                            proximaConsulta
+                              ? formatarData(proximaConsulta.data_consulta)
+                              : "-"
+                          }
+                        />
+
+                        <Info
+                          label="Pendentes"
+                          valor={consultasPendentes.length}
+                        />
+                      </div>
+
+                      <button
+                        onClick={verAnamnese}
+                        className="w-full mt-5 bg-[#1d3557] text-white py-3 rounded-2xl hover:opacity-90 transition"
+                      >
+                        Ver anamnese
+                      </button>
                     </div>
                   </div>
 
                   <div className="lg:col-span-2 bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
                     <h3 className="text-xl font-bold text-[#1d3557] mb-4">
-                      Consultas do paciente
+                      Linha do tempo de consultas
                     </h3>
 
-                    <div className="space-y-3">
-                      {consultasDoPaciente.map((consulta) => (
+                    <div className="space-y-4">
+                      {consultasOrdenadas.map((consulta) => (
                         <div
                           key={consulta.id_consulta}
-                          className="bg-white rounded-2xl p-4 border border-gray-100"
+                          className="relative bg-white rounded-2xl p-4 border border-gray-100"
                         >
                           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                             <div>
@@ -427,7 +525,7 @@ export default function Pacientes() {
                           </div>
 
                           {consulta.observacoes && (
-                            <p className="text-sm text-gray-600 mt-3">
+                            <p className="text-sm text-gray-600 mt-3 border-t border-gray-100 pt-3">
                               {consulta.observacoes}
                             </p>
                           )}
@@ -741,7 +839,7 @@ function ResumoCard({ titulo, valor, destaque }) {
 // CARD DO HISTÓRICO
 // =========================================
 
-function HistoricoCard({ titulo, valor, destaque }) {
+function HistoricoCard({ titulo, valor, descricao, destaque }) {
   return (
     <div
       className={`rounded-3xl p-5 border ${
@@ -755,6 +853,12 @@ function HistoricoCard({ titulo, valor, destaque }) {
       </p>
 
       <h3 className="text-2xl font-bold mt-2">{valor}</h3>
+
+      {descricao && (
+        <p className={`text-xs mt-1 ${destaque ? "text-blue-100" : "text-gray-400"}`}>
+          {descricao}
+        </p>
+      )}
     </div>
   );
 }
