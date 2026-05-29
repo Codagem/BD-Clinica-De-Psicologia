@@ -565,6 +565,13 @@ function exportarPDF() {
 
             <div className="flex flex-col md:flex-row gap-3">
               <button
+                onClick={exportarPDF}
+                className="bg-green-600 text-white px-6 py-3 rounded-2xl shadow hover:bg-green-700 hover:scale-[1.02] active:scale-[0.98] transition"
+              >
+                Exportar PDF
+              </button>
+
+              <button
                 onClick={() => {
                   setMostrarPagamento(!mostrarPagamento);
                   setMostrarDespesa(false);
