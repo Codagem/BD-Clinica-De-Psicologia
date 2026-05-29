@@ -5,15 +5,14 @@
 // =========================================
 
 import toast from "react-hot-toast";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import Protegido from "../components/Protegido";
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { motion } from "framer-motion";
 import {
   CalendarDays,
-  User,
-  Video,
-  MapPin,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -23,34 +22,18 @@ import {
 // =========================================
 
 export default function Consultas() {
-  // =========================================
-  // STATES PRINCIPAIS
-  // =========================================
-
   const [consultas, setConsultas] = useState([]);
   const [pacientes, setPacientes] = useState([]);
   const [psicologos, setPsicologos] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
 
-  // =========================================
-  // STATES DOS FILTROS
-  // =========================================
-
   const [pesquisaPaciente, setPesquisaPaciente] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("Todos");
   const [filtroPsicologo, setFiltroPsicologo] = useState("Todos");
   const [filtroData, setFiltroData] = useState("");
 
-  // =========================================
-  // STATE DA AGENDA DIÁRIA
-  // =========================================
-
   const [dataAgenda, setDataAgenda] = useState(dataHojeInput());
-
-  // =========================================
-  // STATES DO FORMULÁRIO
-  // =========================================
 
   const [idPaciente, setIdPaciente] = useState("");
   const [idPsicologo, setIdPsicologo] = useState("");
@@ -60,70 +43,31 @@ export default function Consultas() {
   const [statusConsulta, setStatusConsulta] = useState("Agendado");
   const [observacoes, setObservacoes] = useState("");
 
-  // =========================================
-  // DATA DE HOJE INPUT
-  // =========================================
-
   function dataHojeInput() {
     const hoje = new Date();
     const ano = hoje.getFullYear();
     const mes = String(hoje.getMonth() + 1).padStart(2, "0");
     const dia = String(hoje.getDate()).padStart(2, "0");
-
     return `${ano}-${mes}-${dia}`;
   }
-
-  // =========================================
-  // CARREGAR PACIENTES
-  // =========================================
 
   async function carregarPacientes() {
     const resposta = await fetch("/api/pacientes");
     const dados = await resposta.json();
-
-    if (Array.isArray(dados)) {
-      setPacientes(dados);
-    } else {
-      setPacientes([]);
-      console.log(dados);
-    }
+    setPacientes(Array.isArray(dados) ? dados : []);
   }
-
-  // =========================================
-  // CARREGAR PSICÓLOGOS
-  // =========================================
 
   async function carregarPsicologos() {
     const resposta = await fetch("/api/psicologos");
     const dados = await resposta.json();
-
-    if (Array.isArray(dados)) {
-      setPsicologos(dados);
-    } else {
-      setPsicologos([]);
-      console.log(dados);
-    }
+    setPsicologos(Array.isArray(dados) ? dados : []);
   }
-
-  // =========================================
-  // CARREGAR CONSULTAS
-  // =========================================
 
   async function carregarConsultas() {
     const resposta = await fetch("/api/consultas");
     const dados = await resposta.json();
-
-    if (Array.isArray(dados)) {
-      setConsultas(dados);
-    } else {
-      setConsultas([]);
-      console.log(dados);
-    }
+    setConsultas(Array.isArray(dados) ? dados : []);
   }
-
-  // =========================================
-  // CADASTRAR OU EDITAR CONSULTA
-  // =========================================
 
   async function salvarConsulta() {
     try {
@@ -134,9 +78,7 @@ export default function Consultas() {
 
       const resposta = await fetch("/api/consultas", {
         method: editandoId ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id_consulta: editandoId,
           id_paciente: idPaciente,
@@ -169,10 +111,6 @@ export default function Consultas() {
     }
   }
 
-  // =========================================
-  // EDITAR CONSULTA
-  // =========================================
-
   function editarConsulta(consulta) {
     setEditandoId(consulta.id_consulta);
     setIdPaciente(consulta.id_paciente || "");
@@ -184,15 +122,8 @@ export default function Consultas() {
     setObservacoes(consulta.observacoes || "");
     setMostrarFormulario(true);
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
-
-  // =========================================
-  // EXCLUIR CONSULTA
-  // =========================================
 
   async function excluirConsulta(idConsulta) {
     const confirmar = confirm("Deseja realmente excluir esta consulta?");
@@ -201,12 +132,8 @@ export default function Consultas() {
     try {
       const resposta = await fetch("/api/consultas", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id_consulta: idConsulta,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_consulta: idConsulta }),
       });
 
       const resultado = await resposta.json();
@@ -223,10 +150,6 @@ export default function Consultas() {
     }
   }
 
-  // =========================================
-  // LIMPAR FORMULÁRIO
-  // =========================================
-
   function limparFormulario() {
     setEditandoId(null);
     setIdPaciente("");
@@ -239,20 +162,12 @@ export default function Consultas() {
     setMostrarFormulario(false);
   }
 
-  // =========================================
-  // LIMPAR FILTROS
-  // =========================================
-
   function limparFiltros() {
     setPesquisaPaciente("");
     setFiltroStatus("Todos");
     setFiltroPsicologo("Todos");
     setFiltroData("");
   }
-
-  // =========================================
-  // MUDAR DIA DA AGENDA
-  // =========================================
 
   function mudarDiaAgenda(dias) {
     const data = new Date(`${dataAgenda}T00:00:00`);
@@ -265,19 +180,11 @@ export default function Consultas() {
     setDataAgenda(`${ano}-${mes}-${dia}`);
   }
 
-  // =========================================
-  // CARREGAMENTO INICIAL
-  // =========================================
-
   useEffect(() => {
     carregarConsultas();
     carregarPacientes();
     carregarPsicologos();
   }, []);
-
-  // =========================================
-  // FUNÇÕES DE FORMATAÇÃO
-  // =========================================
 
   function formatarData(data) {
     if (!data) return "-";
@@ -293,12 +200,43 @@ export default function Consultas() {
     return hora?.slice(0, 5) || "-";
   }
 
+  function exportarPDFConsultas() {
+    const doc = new jsPDF();
+
+    doc.setFontSize(20);
+    doc.text("Clínica de Psicologia", 14, 20);
+
+    doc.setFontSize(11);
+    doc.text(
+      `Relatório de Consultas - ${new Date().toLocaleDateString("pt-BR")}`,
+      14,
+      30
+    );
+
+    doc.setFontSize(12);
+    doc.text(`Total de consultas: ${consultasFiltradas.length}`, 14, 45);
+
+    autoTable(doc, {
+      startY: 55,
+      head: [["Paciente", "Psicólogo", "Data", "Hora", "Tipo", "Status"]],
+      body: consultasFiltradas.map((consulta) => [
+        consulta.paciente || "-",
+        consulta.psicologo || "-",
+        formatarData(consulta.data_consulta),
+        formatarHora(consulta.horario),
+        consulta.tipo_atendimento || "-",
+        consulta.status_consulta || "-",
+      ]),
+    });
+
+    doc.save("consultas-clinica.pdf");
+  }
+
   function corStatus(status) {
     if (status === "Confirmado") return "bg-green-100 text-green-700";
     if (status === "Realizado") return "bg-blue-100 text-blue-700";
     if (status === "Cancelado") return "bg-red-100 text-red-700";
     if (status === "Faltou") return "bg-orange-100 text-orange-700";
-
     return "bg-[#e8eadf] text-[#1d3557]";
   }
 
@@ -307,13 +245,8 @@ export default function Consultas() {
     if (status === "Realizado") return "border-blue-300";
     if (status === "Cancelado") return "border-red-300";
     if (status === "Faltou") return "border-orange-300";
-
     return "border-[#1d3557]/20";
   }
-
-  // =========================================
-  // FILTRAR CONSULTAS
-  // =========================================
 
   const consultasFiltradas = consultas.filter((consulta) => {
     const nomePaciente = consulta.paciente || "";
@@ -341,10 +274,6 @@ export default function Consultas() {
     return dataA.localeCompare(dataB);
   });
 
-  // =========================================
-  // HORÁRIOS PADRÃO DA AGENDA
-  // =========================================
-
   const horariosAgenda = [
     "08:00",
     "09:00",
@@ -361,11 +290,9 @@ export default function Consultas() {
 
   const consultasDoDiaAgenda = consultasFiltradas
     .filter((consulta) => formatarDataInput(consulta.data_consulta) === dataAgenda)
-    .sort((a, b) => String(a.horario || "").localeCompare(String(b.horario || "")));
-
-  // =========================================
-  // CÁLCULOS DOS CARDS
-  // =========================================
+    .sort((a, b) =>
+      String(a.horario || "").localeCompare(String(b.horario || ""))
+    );
 
   const totalConsultas = consultas.length;
 
@@ -393,12 +320,7 @@ export default function Consultas() {
   const presenciais = consultasFiltradas.filter(
     (consulta) => consulta.tipo_atendimento === "Presencial"
   ).length;
-
-  // =========================================
-  // TELA
-  // =========================================
-
-  return (
+    return (
     <Protegido>
       <div className="flex min-h-screen bg-[#fbfaf7]">
         <Sidebar />
@@ -419,18 +341,27 @@ export default function Consultas() {
               </p>
             </div>
 
-            <button
-              onClick={() => {
-                if (mostrarFormulario) {
-                  limparFormulario();
-                } else {
-                  setMostrarFormulario(true);
-                }
-              }}
-              className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
-            >
-              + Nova Consulta
-            </button>
+            <div className="flex flex-col md:flex-row gap-3">
+              <button
+                onClick={exportarPDFConsultas}
+                className="bg-green-600 text-white px-6 py-3 rounded-2xl shadow hover:bg-green-700 hover:scale-[1.02] active:scale-[0.98] transition"
+              >
+                Exportar PDF
+              </button>
+
+              <button
+                onClick={() => {
+                  if (mostrarFormulario) {
+                    limparFormulario();
+                  } else {
+                    setMostrarFormulario(true);
+                  }
+                }}
+                className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
+              >
+                + Nova Consulta
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -610,23 +541,7 @@ export default function Consultas() {
                 onChange={(e) => setFiltroData(e.target.value)}
               />
             </div>
-
-            <p className="text-sm text-gray-500 mt-4">
-              Exibindo{" "}
-              <span className="font-bold text-[#1d3557]">
-                {consultasFiltradas.length}
-              </span>{" "}
-              de{" "}
-              <span className="font-bold text-[#1d3557]">
-                {consultas.length}
-              </span>{" "}
-              consultas.
-            </p>
           </div>
-
-          {/* =========================================
-              AGENDA DIÁRIA ESTILO CALENDÁRIO
-          ========================================= */}
 
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-8">
             <div className="p-6 border-b border-gray-100 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
@@ -780,10 +695,6 @@ export default function Consultas() {
             </div>
           </div>
 
-          {/* =========================================
-              LISTA DE CONSULTAS
-          ========================================= */}
-
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
               <h2 className="text-2xl font-bold text-[#1d3557]">
@@ -884,10 +795,6 @@ export default function Consultas() {
     </Protegido>
   );
 }
-
-// =========================================
-// COMPONENTES AUXILIARES
-// =========================================
 
 function ResumoCard({ titulo, valor, destaque }) {
   return (
