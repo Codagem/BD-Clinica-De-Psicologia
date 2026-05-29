@@ -108,6 +108,19 @@ export default function Consultas() {
     return dataA.localeCompare(dataB);
   });
 
+  const consultasHoje = consultasOrdenadas.filter((consulta) => {
+    const hoje = new Date().toLocaleDateString("pt-BR");
+    return formatarData(consulta.data_consulta) === hoje;
+  });
+
+  const online = consultas.filter(
+    (consulta) => consulta.tipo_atendimento === "Online"
+  ).length;
+
+  const presenciais = consultas.filter(
+    (consulta) => consulta.tipo_atendimento === "Presencial"
+  ).length;
+
   return (
     <Protegido>
       <div className="flex min-h-screen bg-[#fbfaf7]">
@@ -224,83 +237,114 @@ export default function Consultas() {
             </motion.div>
           )}
 
-          <div className="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-6 mb-8">
+          <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.7fr] gap-6 mb-8">
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-2xl font-bold text-[#1d3557]">
-                  Agenda visual
-                </h2>
+              <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-[#1d3557]">
+                    Agenda visual
+                  </h2>
 
-                <p className="text-gray-500 text-sm mt-1">
-                  Próximos atendimentos organizados por horário.
-                </p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Visualização profissional dos atendimentos por data e horário.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Legenda cor="bg-[#e8eadf]" texto="Agendado" />
+                  <Legenda cor="bg-green-100" texto="Confirmado" />
+                  <Legenda cor="bg-blue-100" texto="Realizado" />
+                  <Legenda cor="bg-red-100" texto="Cancelado" />
+                </div>
               </div>
 
-              <div className="p-4 space-y-4">
-                {consultasOrdenadas.slice(0, 5).map((consulta) => (
-                  <motion.div
-                    key={consulta.id_consulta}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 rounded-3xl bg-[#1d3557] text-white flex flex-col items-center justify-center">
-                        <Clock size={18} />
+              <div className="overflow-x-auto">
+                <div className="min-w-[900px]">
+                  {consultasOrdenadas.map((consulta) => (
+                    <motion.div
+                      key={consulta.id_consulta}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="grid grid-cols-[130px_1fr] border-b border-gray-100 hover:bg-[#fbfaf7] transition"
+                    >
+                      <div className="p-6 border-r border-gray-100 bg-[#faf8f3]">
+                        <p className="text-sm text-gray-500">
+                          {formatarData(consulta.data_consulta)}
+                        </p>
 
-                        <span className="text-sm font-bold mt-1">
+                        <h3 className="text-2xl font-bold text-[#1d3557] mt-1">
                           {formatarHora(consulta.horario)}
-                        </span>
+                        </h3>
                       </div>
 
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between gap-3">
+                      <div className="p-5">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                           <div>
-                            <h3 className="font-bold text-[#1d3557]">
-                              {consulta.paciente || "Paciente"}
-                            </h3>
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <h3 className="text-xl font-bold text-[#1d3557]">
+                                {consulta.paciente || "Paciente"}
+                              </h3>
 
-                            <p className="text-sm text-gray-500 mt-1">
-                              {formatarData(consulta.data_consulta)}
-                            </p>
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-medium ${corStatus(
+                                  consulta.status_consulta
+                                )}`}
+                              >
+                                {consulta.status_consulta}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-3 mt-4">
+                              <Tag
+                                icon={<User size={14} />}
+                                texto={consulta.psicologo || "-"}
+                              />
+
+                              <Tag
+                                icon={
+                                  consulta.tipo_atendimento === "Online" ? (
+                                    <Video size={14} />
+                                  ) : (
+                                    <MapPin size={14} />
+                                  )
+                                }
+                                texto={consulta.tipo_atendimento || "-"}
+                              />
+                            </div>
+
+                            {consulta.observacoes && (
+                              <p className="text-gray-500 mt-4 text-sm">
+                                {consulta.observacoes}
+                              </p>
+                            )}
                           </div>
 
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${corStatus(
-                              consulta.status_consulta
-                            )}`}
-                          >
-                            {consulta.status_consulta}
-                          </span>
-                        </div>
+                          <div className="flex flex-col items-start lg:items-end gap-3">
+                            <div className="text-left lg:text-right">
+                              <p className="text-sm text-gray-500">
+                                Consulta
+                              </p>
 
-                        <div className="flex flex-wrap gap-2 mt-4">
-                          <Tag
-                            icon={
-                              consulta.tipo_atendimento === "Online" ? (
-                                <Video size={14} />
-                              ) : (
-                                <MapPin size={14} />
-                              )
-                            }
-                            texto={consulta.tipo_atendimento || "-"}
-                          />
+                              <h4 className="font-bold text-[#1d3557]">
+                                #{consulta.id_consulta}
+                              </h4>
+                            </div>
 
-                          <Tag
-                            icon={<User size={14} />}
-                            texto={consulta.psicologo || "-"}
-                          />
+                            <button className="bg-[#1d3557] text-white px-5 py-2 rounded-2xl text-sm hover:opacity-90 transition">
+                              Ver detalhes
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))}
 
-                {consultas.length === 0 && (
-                  <div className="p-8 text-center text-gray-500">
-                    Nenhuma consulta cadastrada ainda.
-                  </div>
-                )}
+                  {consultas.length === 0 && (
+                    <div className="p-16 text-center text-gray-500">
+                      Nenhuma consulta cadastrada ainda.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -318,10 +362,33 @@ export default function Consultas() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <AgendaMini titulo="Manhã" valor="3" />
-                  <AgendaMini titulo="Tarde" valor="4" />
-                  <AgendaMini titulo="Online" valor="2" />
-                  <AgendaMini titulo="Presencial" valor="5" />
+                  <AgendaMini titulo="Hoje" valor={consultasHoje.length} />
+                  <AgendaMini titulo="Total" valor={totalConsultas} />
+                  <AgendaMini titulo="Online" valor={online} />
+                  <AgendaMini titulo="Presencial" valor={presenciais} />
+                </div>
+
+                <div className="mt-6 bg-white/10 rounded-3xl p-5">
+                  <p className="text-blue-100 text-sm">
+                    Próximo atendimento
+                  </p>
+
+                  {consultasOrdenadas.length > 0 ? (
+                    <>
+                      <h3 className="text-xl font-bold mt-2">
+                        {consultasOrdenadas[0].paciente || "Paciente"}
+                      </h3>
+
+                      <p className="text-blue-100 text-sm mt-1">
+                        {formatarData(consultasOrdenadas[0].data_consulta)} às{" "}
+                        {formatarHora(consultasOrdenadas[0].horario)}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-blue-100 text-sm mt-2">
+                      Nenhum atendimento cadastrado.
+                    </p>
+                  )}
                 </div>
 
                 <p className="text-blue-100 text-sm mt-6">
@@ -500,6 +567,18 @@ function AgendaMini({ titulo, valor }) {
     <div className="bg-white/10 rounded-3xl p-4">
       <p className="text-blue-100 text-sm">{titulo}</p>
       <h3 className="text-3xl font-bold mt-2">{valor}</h3>
+    </div>
+  );
+}
+
+function Legenda({ cor, texto }) {
+  return (
+    <div className="flex items-center gap-2 bg-[#fbfaf7] px-3 py-2 rounded-2xl border border-gray-100">
+      <div className={`w-3 h-3 rounded-full ${cor}`} />
+
+      <span className="text-sm text-[#1d3557] font-medium">
+        {texto}
+      </span>
     </div>
   );
 }
