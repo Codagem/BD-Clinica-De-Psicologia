@@ -1,8 +1,12 @@
 "use client";
 
+// =========================================
+// IMPORTAÇÕES
+// =========================================
+
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -14,23 +18,55 @@ import {
   LifeBuoy,
   Menu,
   X,
+  User,
+  KeyRound,
 } from "lucide-react";
+
+// =========================================
+// COMPONENTE SIDEBAR
+// =========================================
 
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
+
   const [aberto, setAberto] = useState(false);
+  const [tipoUsuario, setTipoUsuario] = useState("");
+
+  // =========================================
+  // CARREGAR TIPO DE USUÁRIO
+  // =========================================
+
+  useEffect(() => {
+    const tipo = localStorage.getItem("tipo_usuario");
+    setTipoUsuario(tipo || "admin");
+  }, []);
+
+  // =========================================
+  // SAIR DO SISTEMA
+  // =========================================
 
   function sair() {
     localStorage.removeItem("logado");
+    localStorage.removeItem("tipo_usuario");
+    localStorage.removeItem("id_paciente");
+
     router.push("/login");
   }
+
+  // =========================================
+  // FECHAR MENU MOBILE
+  // =========================================
 
   function fecharMenu() {
     setAberto(false);
   }
 
-  const links = [
+  // =========================================
+  // LINKS DO ADMIN
+  // =========================================
+
+  const linksAdmin = [
     { href: "/", label: "Início", icon: LayoutDashboard },
     { href: "/pacientes", label: "Pacientes", icon: Users },
     { href: "/consultas", label: "Consultas", icon: CalendarDays },
@@ -38,10 +74,30 @@ export default function Sidebar() {
     { href: "/estoque", label: "Estoque", icon: Package },
   ];
 
+  // =========================================
+  // LINKS DO PACIENTE
+  // =========================================
+
+  const linksPaciente = [
+    { href: "/cliente", label: "Minha área", icon: User },
+    { href: "/cliente", label: "Minhas consultas", icon: CalendarDays },
+    { href: "/cliente", label: "Alterar senha", icon: KeyRound },
+  ];
+
+  const links = tipoUsuario === "paciente" ? linksPaciente : linksAdmin;
+
+  // =========================================
+  // VERIFICAR LINK ATIVO
+  // =========================================
+
   function estaAtivo(href) {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   }
+
+  // =========================================
+  // TELA
+  // =========================================
 
   return (
     <>
@@ -90,13 +146,13 @@ export default function Sidebar() {
 
           <nav className="px-4 flex-1 overflow-y-auto">
             <div className="space-y-1">
-              {links.map((link) => {
+              {links.map((link, index) => {
                 const ativo = estaAtivo(link.href);
                 const Icone = link.icon;
 
                 return (
                   <Link
-                    key={link.href}
+                    key={`${link.href}-${index}`}
                     href={link.href}
                     onClick={fecharMenu}
                     className={`
@@ -123,9 +179,7 @@ export default function Sidebar() {
                       <Icone size={18} />
                     </span>
 
-                    <span className="font-medium">
-                      {link.label}
-                    </span>
+                    <span className="font-medium">{link.label}</span>
 
                     {ativo && (
                       <motion.span
@@ -144,11 +198,15 @@ export default function Sidebar() {
               </p>
 
               <p className="text-[#1d3557] font-semibold mt-2">
-                Clínica premium
+                {tipoUsuario === "paciente"
+                  ? "Portal do paciente"
+                  : "Clínica premium"}
               </p>
 
               <p className="text-sm text-gray-500 mt-1">
-                Gestão moderna para atendimento psicológico.
+                {tipoUsuario === "paciente"
+                  ? "Acompanhe suas consultas e seus dados."
+                  : "Gestão moderna para atendimento psicológico."}
               </p>
             </div>
           </nav>
@@ -157,16 +215,18 @@ export default function Sidebar() {
             <div className="rounded-3xl bg-white border border-[#1d3557]/10 shadow-sm p-4 mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-2xl bg-[#1d3557]/10 text-[#1d3557] flex items-center justify-center font-bold">
-                  D
+                  {tipoUsuario === "paciente" ? "P" : "D"}
                 </div>
 
                 <div className="min-w-0">
                   <p className="text-[#1d3557] font-semibold truncate">
-                    Dra. Juliana
+                    {tipoUsuario === "paciente" ? "Paciente" : "Dra. Juliana"}
                   </p>
 
                   <p className="text-xs text-gray-500">
-                    Psicóloga clínica
+                    {tipoUsuario === "paciente"
+                      ? "Área do paciente"
+                      : "Psicóloga clínica"}
                   </p>
                 </div>
               </div>

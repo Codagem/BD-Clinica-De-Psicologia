@@ -480,10 +480,10 @@ export default function Pacientes() {
                       </div>
 
                       <button
-                        onClick={verAnamnese}
-                        className="w-full mt-5 bg-[#1d3557] text-white py-3 rounded-2xl hover:opacity-90 transition"
+                        disabled
+                        className="w-full mt-5 bg-gray-300 text-gray-500 py-3 rounded-2xl font-semibold cursor-not-allowed"
                       >
-                        Ver anamnese
+                        Anamnese em desenvolvimento
                       </button>
                     </div>
                   </div>
