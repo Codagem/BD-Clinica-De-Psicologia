@@ -9,12 +9,7 @@ import Protegido from "../components/Protegido";
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import { motion } from "framer-motion";
-import {
-  CalendarDays,
-  User,
-  Video,
-  MapPin,
-} from "lucide-react";
+import { CalendarDays, User, Video, MapPin } from "lucide-react";
 
 // =========================================
 // COMPONENTE PRINCIPAL
@@ -30,6 +25,15 @@ export default function Consultas() {
   const [psicologos, setPsicologos] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
+
+  // =========================================
+  // STATES DOS FILTROS
+  // =========================================
+
+  const [pesquisaPaciente, setPesquisaPaciente] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState("Todos");
+  const [filtroPsicologo, setFiltroPsicologo] = useState("Todos");
+  const [filtroData, setFiltroData] = useState("");
 
   // =========================================
   // STATES DO FORMULÁRIO
@@ -210,6 +214,17 @@ export default function Consultas() {
   }
 
   // =========================================
+  // LIMPAR FILTROS
+  // =========================================
+
+  function limparFiltros() {
+    setPesquisaPaciente("");
+    setFiltroStatus("Todos");
+    setFiltroPsicologo("Todos");
+    setFiltroData("");
+  }
+
+  // =========================================
   // CARREGAMENTO INICIAL
   // =========================================
 
@@ -247,6 +262,36 @@ export default function Consultas() {
   }
 
   // =========================================
+  // FILTRAR CONSULTAS
+  // =========================================
+
+  const consultasFiltradas = consultas.filter((consulta) => {
+    const nomePaciente = consulta.paciente || "";
+    const nomePsicologo = consulta.psicologo || "";
+    const dataFormatada = formatarDataInput(consulta.data_consulta);
+
+    const batePaciente = nomePaciente
+      .toLowerCase()
+      .includes(pesquisaPaciente.toLowerCase());
+
+    const bateStatus =
+      filtroStatus === "Todos" || consulta.status_consulta === filtroStatus;
+
+    const batePsicologo =
+      filtroPsicologo === "Todos" || nomePsicologo === filtroPsicologo;
+
+    const bateData = !filtroData || dataFormatada === filtroData;
+
+    return batePaciente && bateStatus && batePsicologo && bateData;
+  });
+
+  const consultasOrdenadas = [...consultasFiltradas].sort((a, b) => {
+    const dataA = `${a.data_consulta || ""} ${a.horario || ""}`;
+    const dataB = `${b.data_consulta || ""} ${b.horario || ""}`;
+    return dataA.localeCompare(dataB);
+  });
+
+  // =========================================
   // CÁLCULOS DOS CARDS
   // =========================================
 
@@ -264,22 +309,16 @@ export default function Consultas() {
     (c) => c.status_consulta === "Realizado"
   ).length;
 
-  const consultasOrdenadas = [...consultas].sort((a, b) => {
-    const dataA = `${a.data_consulta || ""} ${a.horario || ""}`;
-    const dataB = `${b.data_consulta || ""} ${b.horario || ""}`;
-    return dataA.localeCompare(dataB);
-  });
-
-  const consultasHoje = consultasOrdenadas.filter((consulta) => {
+  const consultasHoje = consultas.filter((consulta) => {
     const hoje = new Date().toLocaleDateString("pt-BR");
     return formatarData(consulta.data_consulta) === hoje;
   });
 
-  const online = consultas.filter(
+  const online = consultasFiltradas.filter(
     (consulta) => consulta.tipo_atendimento === "Online"
   ).length;
 
-  const presenciais = consultas.filter(
+  const presenciais = consultasFiltradas.filter(
     (consulta) => consulta.tipo_atendimento === "Presencial"
   ).length;
 
@@ -352,10 +391,6 @@ export default function Consultas() {
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* =========================================
-                    SELECT DE PACIENTE
-                ========================================= */}
-
                 <select
                   value={idPaciente}
                   className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
@@ -372,10 +407,6 @@ export default function Consultas() {
                     </option>
                   ))}
                 </select>
-
-                {/* =========================================
-                    SELECT DE PSICÓLOGO
-                ========================================= */}
 
                 <select
                   value={idPsicologo}
@@ -457,6 +488,87 @@ export default function Consultas() {
           )}
 
           {/* =========================================
+              FILTROS PROFISSIONAIS
+          ========================================= */}
+
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1d3557]">
+                  Filtros da agenda
+                </h2>
+
+                <p className="text-gray-500 text-sm mt-1">
+                  Filtre consultas por paciente, psicólogo, status ou data.
+                </p>
+              </div>
+
+              <button
+                onClick={limparFiltros}
+                className="bg-[#f3f1eb] text-[#1d3557] px-5 py-3 rounded-2xl hover:bg-gray-200 transition"
+              >
+                Limpar filtros
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+              <input
+                type="text"
+                placeholder="Pesquisar paciente..."
+                value={pesquisaPaciente}
+                className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                onChange={(e) => setPesquisaPaciente(e.target.value)}
+              />
+
+              <select
+                value={filtroPsicologo}
+                className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                onChange={(e) => setFiltroPsicologo(e.target.value)}
+              >
+                <option value="Todos">Todos os psicólogos</option>
+
+                {psicologos.map((psicologo) => (
+                  <option key={psicologo.id_psicologo} value={psicologo.nome}>
+                    {psicologo.nome}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroStatus}
+                className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                onChange={(e) => setFiltroStatus(e.target.value)}
+              >
+                <option value="Todos">Todos os status</option>
+                <option value="Agendado">Agendado</option>
+                <option value="Confirmado">Confirmado</option>
+                <option value="Realizado">Realizado</option>
+                <option value="Cancelado">Cancelado</option>
+                <option value="Faltou">Faltou</option>
+              </select>
+
+              <input
+                type="date"
+                value={filtroData}
+                className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                onChange={(e) => setFiltroData(e.target.value)}
+              />
+            </div>
+
+            <p className="text-sm text-gray-500 mt-4">
+              Exibindo{" "}
+              <span className="font-bold text-[#1d3557]">
+                {consultasFiltradas.length}
+              </span>{" "}
+              de{" "}
+              <span className="font-bold text-[#1d3557]">
+                {consultas.length}
+              </span>{" "}
+              consultas.
+            </p>
+          </div>
+
+          {/* =========================================
               AGENDA VISUAL
           ========================================= */}
 
@@ -469,7 +581,7 @@ export default function Consultas() {
                   </h2>
 
                   <p className="text-gray-500 text-sm mt-1">
-                    Visualização profissional dos atendimentos por data e horário.
+                    Visualização profissional dos atendimentos filtrados.
                   </p>
                 </div>
 
@@ -570,9 +682,9 @@ export default function Consultas() {
                     </motion.div>
                   ))}
 
-                  {consultas.length === 0 && (
+                  {consultasFiltradas.length === 0 && (
                     <div className="p-16 text-center text-gray-500">
-                      Nenhuma consulta cadastrada ainda.
+                      Nenhuma consulta encontrada com os filtros atuais.
                     </div>
                   )}
                 </div>
@@ -594,7 +706,7 @@ export default function Consultas() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <AgendaMini titulo="Hoje" valor={consultasHoje.length} />
-                  <AgendaMini titulo="Total" valor={totalConsultas} />
+                  <AgendaMini titulo="Filtradas" valor={consultasFiltradas.length} />
                   <AgendaMini titulo="Online" valor={online} />
                   <AgendaMini titulo="Presencial" valor={presenciais} />
                 </div>
@@ -615,7 +727,7 @@ export default function Consultas() {
               </h2>
 
               <p className="text-gray-500 text-sm mt-1">
-                Visualize todos os atendimentos cadastrados.
+                Visualize todos os atendimentos filtrados.
               </p>
             </div>
 
@@ -635,7 +747,7 @@ export default function Consultas() {
                 </thead>
 
                 <tbody className="text-black">
-                  {consultas.map((consulta) => (
+                  {consultasFiltradas.map((consulta) => (
                     <tr
                       key={consulta.id_consulta}
                       className="border-b border-gray-100 hover:bg-[#fbfaf7] transition"
@@ -692,10 +804,10 @@ export default function Consultas() {
                     </tr>
                   ))}
 
-                  {consultas.length === 0 && (
+                  {consultasFiltradas.length === 0 && (
                     <tr>
                       <td colSpan="8" className="p-8 text-center text-gray-500">
-                        Nenhuma consulta cadastrada ainda.
+                        Nenhuma consulta encontrada com os filtros atuais.
                       </td>
                     </tr>
                   )}
