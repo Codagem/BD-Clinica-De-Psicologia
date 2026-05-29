@@ -32,6 +32,7 @@ export default function Estoque() {
   const [quantidadeAtual, setQuantidadeAtual] = useState("");
   const [quantidadeMinima, setQuantidadeMinima] = useState("");
   const [fornecedor, setFornecedor] = useState("");
+  const [quantidadeMovimento, setQuantidadeMovimento] = useState("");
 
   // =========================================
   // CARREGAR PRODUTOS
@@ -90,6 +91,7 @@ export default function Estoque() {
     setQuantidadeAtual(produto.quantidade_atual || 0);
     setQuantidadeMinima(produto.quantidade_minima || "");
     setFornecedor(produto.fornecedor || "");
+    setQuantidadeMovimento("");
     setMostrarFormulario(true);
 
     window.scrollTo({
@@ -99,7 +101,7 @@ export default function Estoque() {
   }
 
   // =========================================
-  // AUMENTAR QUANTIDADE DENTRO DO EDITAR
+  // AUMENTAR 1 UNIDADE
   // =========================================
 
   function aumentarQuantidade() {
@@ -107,11 +109,43 @@ export default function Estoque() {
   }
 
   // =========================================
-  // DIMINUIR QUANTIDADE DENTRO DO EDITAR
+  // DIMINUIR 1 UNIDADE
   // =========================================
 
   function diminuirQuantidade() {
     setQuantidadeAtual(Math.max(0, Number(quantidadeAtual || 0) - 1));
+  }
+
+  // =========================================
+  // ADICIONAR QUANTIDADE DIGITADA
+  // =========================================
+
+  function adicionarQuantidade() {
+    const valor = Number(quantidadeMovimento || 0);
+
+    if (valor <= 0) {
+      toast.error("Digite uma quantidade válida.");
+      return;
+    }
+
+    setQuantidadeAtual(Number(quantidadeAtual || 0) + valor);
+    setQuantidadeMovimento("");
+  }
+
+  // =========================================
+  // RETIRAR QUANTIDADE DIGITADA
+  // =========================================
+
+  function retirarQuantidade() {
+    const valor = Number(quantidadeMovimento || 0);
+
+    if (valor <= 0) {
+      toast.error("Digite uma quantidade válida.");
+      return;
+    }
+
+    setQuantidadeAtual(Math.max(0, Number(quantidadeAtual || 0) - valor));
+    setQuantidadeMovimento("");
   }
 
   // =========================================
@@ -125,6 +159,7 @@ export default function Estoque() {
     setQuantidadeAtual("");
     setQuantidadeMinima("");
     setFornecedor("");
+    setQuantidadeMovimento("");
     setMostrarFormulario(false);
   }
 
@@ -256,10 +291,6 @@ export default function Estoque() {
                   onChange={(e) => setCategoria(e.target.value)}
                 />
 
-                {/* =========================================
-                    QUANTIDADE NO CADASTRO
-                ========================================= */}
-
                 {!editandoId && (
                   <input
                     type="number"
@@ -270,34 +301,62 @@ export default function Estoque() {
                   />
                 )}
 
-                {/* =========================================
-                    QUANTIDADE NO EDITAR COM + E -
-                ========================================= */}
-
                 {editandoId && (
-                  <div className="flex items-center justify-between gap-2 border border-gray-200 p-2 rounded-2xl bg-[#fbfaf7]">
-                    <button
-                      type="button"
-                      onClick={diminuirQuantidade}
-                      className="bg-red-100 text-red-700 w-10 h-10 rounded-xl font-bold"
-                    >
-                      -
-                    </button>
+                  <div className="lg:col-span-2 bg-[#fbfaf7] border border-gray-200 rounded-2xl p-4">
+                    <p className="text-sm font-semibold text-[#1d3557] mb-3">
+                      Controle de quantidade
+                    </p>
 
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500">Quantidade</p>
-                      <h3 className="text-xl font-bold text-[#1d3557]">
-                        {quantidadeAtual}
-                      </h3>
+                    <div className="flex items-center gap-2 mb-4">
+                      <button
+                        type="button"
+                        onClick={diminuirQuantidade}
+                        className="bg-red-100 text-red-700 w-11 h-11 rounded-xl font-bold"
+                      >
+                        -
+                      </button>
+
+                      <input
+                        type="number"
+                        value={quantidadeAtual}
+                        className="w-full border border-gray-200 p-3 rounded-2xl text-black bg-white text-center font-bold outline-none focus:border-[#1d3557]"
+                        onChange={(e) => setQuantidadeAtual(e.target.value)}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={aumentarQuantidade}
+                        className="bg-green-100 text-green-700 w-11 h-11 rounded-xl font-bold"
+                      >
+                        +
+                      </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={aumentarQuantidade}
-                      className="bg-green-100 text-green-700 w-10 h-10 rounded-xl font-bold"
-                    >
-                      +
-                    </button>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <input
+                        type="number"
+                        placeholder="Movimentação"
+                        value={quantidadeMovimento}
+                        className="border border-gray-200 p-3 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                        onChange={(e) => setQuantidadeMovimento(e.target.value)}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={adicionarQuantidade}
+                        className="bg-green-100 text-green-700 px-4 py-3 rounded-2xl font-semibold"
+                      >
+                        + Entrada
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={retirarQuantidade}
+                        className="bg-red-100 text-red-700 px-4 py-3 rounded-2xl font-semibold"
+                      >
+                        - Saída
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -350,10 +409,6 @@ export default function Estoque() {
                 Acompanhe e atualize a quantidade dos itens cadastrados.
               </p>
             </div>
-
-            {/* =========================================
-                TABELA DESKTOP
-            ========================================= */}
 
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[1050px]">
@@ -426,10 +481,6 @@ export default function Estoque() {
                 </tbody>
               </table>
             </div>
-
-            {/* =========================================
-                CARDS MOBILE
-            ========================================= */}
 
             <div className="md:hidden p-4 space-y-4">
               {produtos.map((produto) => {
