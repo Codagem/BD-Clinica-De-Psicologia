@@ -26,6 +26,8 @@ export default function Consultas() {
   // =========================================
 
   const [consultas, setConsultas] = useState([]);
+  const [pacientes, setPacientes] = useState([]);
+  const [psicologos, setPsicologos] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
 
@@ -40,6 +42,38 @@ export default function Consultas() {
   const [tipoAtendimento, setTipoAtendimento] = useState("Presencial");
   const [statusConsulta, setStatusConsulta] = useState("Agendado");
   const [observacoes, setObservacoes] = useState("");
+
+  // =========================================
+  // CARREGAR PACIENTES
+  // =========================================
+
+  async function carregarPacientes() {
+    const resposta = await fetch("/api/pacientes");
+    const dados = await resposta.json();
+
+    if (Array.isArray(dados)) {
+      setPacientes(dados);
+    } else {
+      setPacientes([]);
+      console.log(dados);
+    }
+  }
+
+  // =========================================
+  // CARREGAR PSICÓLOGOS
+  // =========================================
+
+  async function carregarPsicologos() {
+    const resposta = await fetch("/api/psicologos");
+    const dados = await resposta.json();
+
+    if (Array.isArray(dados)) {
+      setPsicologos(dados);
+    } else {
+      setPsicologos([]);
+      console.log(dados);
+    }
+  }
 
   // =========================================
   // CARREGAR CONSULTAS
@@ -63,6 +97,11 @@ export default function Consultas() {
 
   async function salvarConsulta() {
     try {
+      if (!idPaciente || !idPsicologo || !dataConsulta || !horario) {
+        toast.error("Preencha paciente, psicólogo, data e horário.");
+        return;
+      }
+
       const resposta = await fetch("/api/consultas", {
         method: editandoId ? "PUT" : "POST",
         headers: {
@@ -176,6 +215,8 @@ export default function Consultas() {
 
   useEffect(() => {
     carregarConsultas();
+    carregarPacientes();
+    carregarPsicologos();
   }, []);
 
   // =========================================
@@ -311,21 +352,47 @@ export default function Consultas() {
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <input
-                  type="number"
-                  placeholder="ID do Paciente"
+                {/* =========================================
+                    SELECT DE PACIENTE
+                ========================================= */}
+
+                <select
                   value={idPaciente}
                   className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
                   onChange={(e) => setIdPaciente(e.target.value)}
-                />
+                >
+                  <option value="">Selecione o paciente</option>
 
-                <input
-                  type="number"
-                  placeholder="ID do Psicólogo"
+                  {pacientes.map((paciente) => (
+                    <option
+                      key={paciente.id_paciente}
+                      value={paciente.id_paciente}
+                    >
+                      {paciente.nome_completo}
+                    </option>
+                  ))}
+                </select>
+
+                {/* =========================================
+                    SELECT DE PSICÓLOGO
+                ========================================= */}
+
+                <select
                   value={idPsicologo}
                   className="border border-gray-200 p-3 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
                   onChange={(e) => setIdPsicologo(e.target.value)}
-                />
+                >
+                  <option value="">Selecione o psicólogo</option>
+
+                  {psicologos.map((psicologo) => (
+                    <option
+                      key={psicologo.id_psicologo}
+                      value={psicologo.id_psicologo}
+                    >
+                      {psicologo.nome}
+                    </option>
+                  ))}
+                </select>
 
                 <input
                   type="date"
@@ -690,15 +757,6 @@ function Legenda({ cor, texto }) {
       <div className={`w-3 h-3 rounded-full ${cor}`} />
 
       <span className="text-sm text-[#1d3557] font-medium">{texto}</span>
-    </div>
-  );
-}
-
-function Info({ label, valor }) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-2">
-      <span className="text-gray-500">{label}</span>
-      <span className="text-[#1d3557] font-medium text-right">{valor}</span>
     </div>
   );
 }
