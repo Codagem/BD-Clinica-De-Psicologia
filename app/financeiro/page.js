@@ -1,5 +1,9 @@
 "use client";
 
+// =========================================
+// IMPORTAÇÕES
+// =========================================
+
 import Protegido from "../components/Protegido";
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
@@ -13,7 +17,15 @@ import {
   Tooltip,
 } from "recharts";
 
+// =========================================
+// COMPONENTE PRINCIPAL
+// =========================================
+
 export default function Financeiro() {
+  // =========================================
+  // STATES PRINCIPAIS
+  // =========================================
+
   const [dados, setDados] = useState({
     resumo: {},
     pagamentos: [],
@@ -22,11 +34,19 @@ export default function Financeiro() {
 
   const [consultas, setConsultas] = useState([]);
 
+  // =========================================
+  // STATES DE FORMULÁRIOS
+  // =========================================
+
   const [mostrarPagamento, setMostrarPagamento] = useState(false);
   const [mostrarDespesa, setMostrarDespesa] = useState(false);
 
   const [editandoPagamentoId, setEditandoPagamentoId] = useState(null);
   const [editandoDespesaId, setEditandoDespesaId] = useState(null);
+
+  // =========================================
+  // STATES DO PAGAMENTO
+  // =========================================
 
   const [idConsulta, setIdConsulta] = useState("");
   const [valorPagamento, setValorPagamento] = useState("");
@@ -34,16 +54,43 @@ export default function Financeiro() {
   const [statusPagamento, setStatusPagamento] = useState("Pago");
   const [dataPagamento, setDataPagamento] = useState("");
 
+  // =========================================
+  // STATES DA DESPESA
+  // =========================================
+
   const [descricao, setDescricao] = useState("");
   const [categoria, setCategoria] = useState("");
   const [valorDespesa, setValorDespesa] = useState("");
   const [dataDespesa, setDataDespesa] = useState("");
+
+  // =========================================
+  // STATES DOS FILTROS
+  // =========================================
+
+  const [pesquisaPagamento, setPesquisaPagamento] = useState("");
+  const [filtroStatusPagamento, setFiltroStatusPagamento] = useState("Todos");
+  const [filtroFormaPagamento, setFiltroFormaPagamento] = useState("Todos");
+  const [dataInicioPagamento, setDataInicioPagamento] = useState("");
+  const [dataFimPagamento, setDataFimPagamento] = useState("");
+
+  const [pesquisaDespesa, setPesquisaDespesa] = useState("");
+  const [categoriaDespesaFiltro, setCategoriaDespesaFiltro] = useState("");
+  const [dataInicioDespesa, setDataInicioDespesa] = useState("");
+  const [dataFimDespesa, setDataFimDespesa] = useState("");
+
+  // =========================================
+  // CARREGAR FINANCEIRO
+  // =========================================
 
   async function carregarFinanceiro() {
     const resposta = await fetch("/api/financeiro");
     const resultado = await resposta.json();
     setDados(resultado);
   }
+
+  // =========================================
+  // CARREGAR CONSULTAS
+  // =========================================
 
   async function carregarConsultas() {
     const resposta = await fetch("/api/consultas");
@@ -56,10 +103,18 @@ export default function Financeiro() {
     }
   }
 
+  // =========================================
+  // FORMATAR DATA INPUT
+  // =========================================
+
   function formatarDataInput(data) {
     if (!data) return "";
     return String(data).slice(0, 10);
   }
+
+  // =========================================
+  // LIMPAR PAGAMENTO
+  // =========================================
 
   function limparPagamento() {
     setEditandoPagamentoId(null);
@@ -71,6 +126,10 @@ export default function Financeiro() {
     setMostrarPagamento(false);
   }
 
+  // =========================================
+  // LIMPAR DESPESA
+  // =========================================
+
   function limparDespesa() {
     setEditandoDespesaId(null);
     setDescricao("");
@@ -79,6 +138,27 @@ export default function Financeiro() {
     setDataDespesa("");
     setMostrarDespesa(false);
   }
+
+  // =========================================
+  // LIMPAR FILTROS
+  // =========================================
+
+  function limparFiltros() {
+    setPesquisaPagamento("");
+    setFiltroStatusPagamento("Todos");
+    setFiltroFormaPagamento("Todos");
+    setDataInicioPagamento("");
+    setDataFimPagamento("");
+
+    setPesquisaDespesa("");
+    setCategoriaDespesaFiltro("");
+    setDataInicioDespesa("");
+    setDataFimDespesa("");
+  }
+
+  // =========================================
+  // CADASTRAR OU EDITAR PAGAMENTO
+  // =========================================
 
   async function cadastrarPagamento() {
     try {
@@ -118,6 +198,10 @@ export default function Financeiro() {
     }
   }
 
+  // =========================================
+  // CADASTRAR OU EDITAR DESPESA
+  // =========================================
+
   async function cadastrarDespesa() {
     try {
       const resposta = await fetch("/api/financeiro", {
@@ -155,6 +239,10 @@ export default function Financeiro() {
     }
   }
 
+  // =========================================
+  // EDITAR PAGAMENTO
+  // =========================================
+
   function editarPagamento(pagamento) {
     setEditandoPagamentoId(pagamento.id_pagamento);
     setIdConsulta(pagamento.id_consulta || "");
@@ -164,7 +252,16 @@ export default function Financeiro() {
     setDataPagamento(formatarDataInput(pagamento.data_pagamento));
     setMostrarPagamento(true);
     setMostrarDespesa(false);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }
+
+  // =========================================
+  // EDITAR DESPESA
+  // =========================================
 
   function editarDespesa(despesa) {
     setEditandoDespesaId(despesa.id_despesa);
@@ -174,7 +271,16 @@ export default function Financeiro() {
     setDataDespesa(formatarDataInput(despesa.data_despesa));
     setMostrarDespesa(true);
     setMostrarPagamento(false);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   }
+
+  // =========================================
+  // EXCLUIR PAGAMENTO
+  // =========================================
 
   async function excluirPagamento(id) {
     const confirmar = confirm("Deseja realmente excluir este pagamento?");
@@ -206,6 +312,10 @@ export default function Financeiro() {
     }
   }
 
+  // =========================================
+  // EXCLUIR DESPESA
+  // =========================================
+
   async function excluirDespesa(id) {
     const confirmar = confirm("Deseja realmente excluir esta despesa?");
     if (!confirmar) return;
@@ -236,15 +346,27 @@ export default function Financeiro() {
     }
   }
 
+  // =========================================
+  // CARREGAMENTO INICIAL
+  // =========================================
+
   useEffect(() => {
     carregarFinanceiro();
     carregarConsultas();
   }, []);
 
+  // =========================================
+  // FORMATAR DATA
+  // =========================================
+
   function formatarData(data) {
     if (!data) return "-";
     return new Date(data).toLocaleDateString("pt-BR");
   }
+
+  // =========================================
+  // FORMATAR VALOR
+  // =========================================
 
   function formatarValor(valor) {
     return Number(valor || 0).toLocaleString("pt-BR", {
@@ -253,6 +375,10 @@ export default function Financeiro() {
     });
   }
 
+  // =========================================
+  // COR DO STATUS
+  // =========================================
+
   function corStatus(status) {
     if (status === "Pago") return "bg-green-100 text-green-700";
     if (status === "Pendente") return "bg-yellow-100 text-yellow-700";
@@ -260,7 +386,79 @@ export default function Financeiro() {
     return "bg-[#e8eadf] text-[#1d3557]";
   }
 
+  // =========================================
+  // FILTRAR PAGAMENTOS
+  // =========================================
+
+  const pagamentosFiltrados = dados.pagamentos.filter((pagamento) => {
+    const paciente = pagamento.paciente || "";
+    const data = formatarDataInput(pagamento.data_pagamento);
+
+    const batePesquisa = paciente
+      .toLowerCase()
+      .includes(pesquisaPagamento.toLowerCase());
+
+    const bateStatus =
+      filtroStatusPagamento === "Todos" ||
+      pagamento.status_pagamento === filtroStatusPagamento;
+
+    const bateForma =
+      filtroFormaPagamento === "Todos" ||
+      pagamento.forma_pagamento === filtroFormaPagamento;
+
+    const bateDataInicio = !dataInicioPagamento || data >= dataInicioPagamento;
+    const bateDataFim = !dataFimPagamento || data <= dataFimPagamento;
+
+    return (
+      batePesquisa &&
+      bateStatus &&
+      bateForma &&
+      bateDataInicio &&
+      bateDataFim
+    );
+  });
+
+  // =========================================
+  // FILTRAR DESPESAS
+  // =========================================
+
+  const despesasFiltradas = dados.despesas.filter((despesa) => {
+    const texto = `${despesa.descricao || ""} ${despesa.categoria || ""}`;
+    const data = formatarDataInput(despesa.data_despesa);
+
+    const batePesquisa = texto
+      .toLowerCase()
+      .includes(pesquisaDespesa.toLowerCase());
+
+    const bateCategoria =
+      !categoriaDespesaFiltro ||
+      (despesa.categoria || "")
+        .toLowerCase()
+        .includes(categoriaDespesaFiltro.toLowerCase());
+
+    const bateDataInicio = !dataInicioDespesa || data >= dataInicioDespesa;
+    const bateDataFim = !dataFimDespesa || data <= dataFimDespesa;
+
+    return batePesquisa && bateCategoria && bateDataInicio && bateDataFim;
+  });
+
+  // =========================================
+  // CÁLCULOS
+  // =========================================
+
   const lucroNegativo = Number(dados.resumo.lucro_liquido || 0) < 0;
+
+  const totalPagamentosFiltrados = pagamentosFiltrados.reduce(
+    (total, item) => total + Number(item.valor || 0),
+    0
+  );
+
+  const totalDespesasFiltradas = despesasFiltradas.reduce(
+    (total, item) => total + Number(item.valor || 0),
+    0
+  );
+
+  const saldoFiltrado = totalPagamentosFiltrados - totalDespesasFiltradas;
 
   const dadosGrafico = [
     {
@@ -273,12 +471,20 @@ export default function Financeiro() {
     },
   ];
 
+  // =========================================
+  // TELA
+  // =========================================
+
   return (
     <Protegido>
       <div className="flex min-h-screen bg-[#fbfaf7]">
         <Sidebar />
 
         <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
+          {/* =========================================
+              CABEÇALHO
+          ========================================= */}
+
           <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5 mb-10">
             <div>
               <p className="text-[#2b4c7e] font-semibold mb-2">
@@ -317,6 +523,10 @@ export default function Financeiro() {
             </div>
           </div>
 
+          {/* =========================================
+              CARDS DE RESUMO
+          ========================================= */}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
             <ResumoCard
               titulo="Receitas"
@@ -338,6 +548,10 @@ export default function Financeiro() {
               destaque
             />
           </div>
+
+          {/* =========================================
+              FORMULÁRIO PAGAMENTO
+          ========================================= */}
 
           {mostrarPagamento && (
             <motion.div
@@ -427,6 +641,10 @@ export default function Financeiro() {
             </motion.div>
           )}
 
+          {/* =========================================
+              FORMULÁRIO DESPESA
+          ========================================= */}
+
           {mostrarDespesa && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
@@ -488,6 +706,154 @@ export default function Financeiro() {
               </div>
             </motion.div>
           )}
+
+          {/* =========================================
+              FILTROS FINANCEIROS
+          ========================================= */}
+
+          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1d3557]">
+                  Filtros financeiros
+                </h2>
+
+                <p className="text-gray-500 text-sm mt-1">
+                  Filtre pagamentos e despesas por busca, status, forma e período.
+                </p>
+              </div>
+
+              <button
+                onClick={limparFiltros}
+                className="bg-[#f3f1eb] text-[#1d3557] px-5 py-3 rounded-2xl hover:bg-gray-200 transition"
+              >
+                Limpar filtros
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
+                <h3 className="font-bold text-[#1d3557] mb-4">
+                  Filtros de pagamentos
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Pesquisar paciente..."
+                    value={pesquisaPagamento}
+                    onChange={(e) => setPesquisaPagamento(e.target.value)}
+                    className="border border-gray-200 p-3 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  />
+
+                  <select
+                    value={filtroStatusPagamento}
+                    onChange={(e) => setFiltroStatusPagamento(e.target.value)}
+                    className="border border-gray-200 p-3 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  >
+                    <option value="Todos">Todos os status</option>
+                    <option value="Pago">Pago</option>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Cancelado">Cancelado</option>
+                  </select>
+
+                  <select
+                    value={filtroFormaPagamento}
+                    onChange={(e) => setFiltroFormaPagamento(e.target.value)}
+                    className="border border-gray-200 p-3 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  >
+                    <option value="Todos">Todas as formas</option>
+                    <option value="Pix">Pix</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Cartão">Cartão</option>
+                    <option value="Transferência">Transferência</option>
+                  </select>
+
+                  <input
+                    type="date"
+                    value={dataInicioPagamento}
+                    onChange={(e) => setDataInicioPagamento(e.target.value)}
+                    className="border border-gray-200 p-3 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  />
+
+                  <input
+                    type="date"
+                    value={dataFimPagamento}
+                    onChange={(e) => setDataFimPagamento(e.target.value)}
+                    className="border border-gray-200 p-3 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557] md:col-span-2"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
+                <h3 className="font-bold text-[#1d3557] mb-4">
+                  Filtros de despesas
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Pesquisar despesa..."
+                    value={pesquisaDespesa}
+                    onChange={(e) => setPesquisaDespesa(e.target.value)}
+                    className="border border-gray-200 p-3 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Categoria..."
+                    value={categoriaDespesaFiltro}
+                    onChange={(e) => setCategoriaDespesaFiltro(e.target.value)}
+                    className="border border-gray-200 p-3 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  />
+
+                  <input
+                    type="date"
+                    value={dataInicioDespesa}
+                    onChange={(e) => setDataInicioDespesa(e.target.value)}
+                    className="border border-gray-200 p-3 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  />
+
+                  <input
+                    type="date"
+                    value={dataFimDespesa}
+                    onChange={(e) => setDataFimDespesa(e.target.value)}
+                    className="border border-gray-200 p-3 rounded-2xl text-black bg-white outline-none focus:border-[#1d3557]"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* =========================================
+              RESUMO FILTRADO
+          ========================================= */}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
+            <ResumoCard
+              titulo="Receitas filtradas"
+              valor={formatarValor(totalPagamentosFiltrados)}
+              descricao={`${pagamentosFiltrados.length} pagamentos encontrados`}
+            />
+
+            <ResumoCard
+              titulo="Despesas filtradas"
+              valor={formatarValor(totalDespesasFiltradas)}
+              descricao={`${despesasFiltradas.length} despesas encontradas`}
+              vermelho
+            />
+
+            <ResumoCard
+              titulo="Saldo filtrado"
+              valor={formatarValor(saldoFiltrado)}
+              descricao="Receitas filtradas - despesas filtradas"
+              destaque
+            />
+          </div>
+
+          {/* =========================================
+              GRÁFICO E PAINEL
+          ========================================= */}
 
           <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-6 mb-10">
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
@@ -580,6 +946,10 @@ export default function Financeiro() {
             </div>
           </div>
 
+          {/* =========================================
+              PAGAMENTOS
+          ========================================= */}
+
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-10">
             <div className="p-6 border-b border-gray-100">
               <h2 className="text-2xl font-bold text-[#1d3557]">
@@ -605,7 +975,7 @@ export default function Financeiro() {
                 </thead>
 
                 <tbody className="text-black">
-                  {dados.pagamentos.map((pagamento) => (
+                  {pagamentosFiltrados.map((pagamento) => (
                     <tr
                       key={pagamento.id_pagamento}
                       className="border-b border-gray-100 hover:bg-[#fbfaf7] transition"
@@ -658,7 +1028,7 @@ export default function Financeiro() {
                     </tr>
                   ))}
 
-                  {dados.pagamentos.length === 0 && (
+                  {pagamentosFiltrados.length === 0 && (
                     <tr>
                       <td colSpan="6" className="p-8 text-center text-gray-500">
                         Nenhum pagamento encontrado.
@@ -670,7 +1040,7 @@ export default function Financeiro() {
             </div>
 
             <div className="md:hidden p-4 space-y-4">
-              {dados.pagamentos.map((pagamento) => (
+              {pagamentosFiltrados.map((pagamento) => (
                 <motion.div
                   key={pagamento.id_pagamento}
                   initial={{ opacity: 0, y: 12 }}
@@ -727,13 +1097,17 @@ export default function Financeiro() {
                 </motion.div>
               ))}
 
-              {dados.pagamentos.length === 0 && (
+              {pagamentosFiltrados.length === 0 && (
                 <div className="p-8 text-center text-gray-500">
                   Nenhum pagamento encontrado.
                 </div>
               )}
             </div>
           </div>
+
+          {/* =========================================
+              DESPESAS
+          ========================================= */}
 
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
@@ -759,7 +1133,7 @@ export default function Financeiro() {
                 </thead>
 
                 <tbody className="text-black">
-                  {dados.despesas.map((despesa) => (
+                  {despesasFiltradas.map((despesa) => (
                     <tr
                       key={despesa.id_despesa}
                       className="border-b border-gray-100 hover:bg-[#fbfaf7] transition"
@@ -800,7 +1174,7 @@ export default function Financeiro() {
                     </tr>
                   ))}
 
-                  {dados.despesas.length === 0 && (
+                  {despesasFiltradas.length === 0 && (
                     <tr>
                       <td colSpan="5" className="p-8 text-center text-gray-500">
                         Nenhuma despesa encontrada.
@@ -812,7 +1186,7 @@ export default function Financeiro() {
             </div>
 
             <div className="md:hidden p-4 space-y-4">
-              {dados.despesas.map((despesa) => (
+              {despesasFiltradas.map((despesa) => (
                 <motion.div
                   key={despesa.id_despesa}
                   initial={{ opacity: 0, y: 12 }}
@@ -862,7 +1236,7 @@ export default function Financeiro() {
                 </motion.div>
               ))}
 
-              {dados.despesas.length === 0 && (
+              {despesasFiltradas.length === 0 && (
                 <div className="p-8 text-center text-gray-500">
                   Nenhuma despesa encontrada.
                 </div>
@@ -874,6 +1248,10 @@ export default function Financeiro() {
     </Protegido>
   );
 }
+
+// =========================================
+// CARD DE RESUMO
+// =========================================
 
 function ResumoCard({ titulo, valor, descricao, destaque, vermelho }) {
   return (
@@ -912,6 +1290,10 @@ function ResumoCard({ titulo, valor, descricao, destaque, vermelho }) {
     </motion.div>
   );
 }
+
+// =========================================
+// INFO MOBILE
+// =========================================
 
 function Info({ label, valor }) {
   return (
