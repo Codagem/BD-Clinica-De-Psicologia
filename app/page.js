@@ -1,5 +1,9 @@
 "use client";
 
+// =========================================
+// IMPORTAÇÕES
+// =========================================
+
 import Protegido from "./components/Protegido";
 import { useEffect, useState } from "react";
 import Sidebar from "./components/Sidebar";
@@ -11,17 +15,34 @@ import {
   Wallet,
   Package,
   ClipboardList,
+  TrendingUp,
 } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
   Bar,
   XAxis,
+  YAxis,
   Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  CartesianGrid,
 } from "recharts";
 
+// =========================================
+// COMPONENTE PRINCIPAL
+// =========================================
+
 export default function Dashboard() {
+  // =========================================
+  // STATES PRINCIPAIS
+  // =========================================
+
   const [carregando, setCarregando] = useState(true);
+  const [consultas, setConsultas] = useState([]);
 
   const [dados, setDados] = useState({
     pacientes: 0,
@@ -31,6 +52,137 @@ export default function Dashboard() {
     lucro: 0,
     estoqueBaixo: 0,
   });
+
+  // =========================================
+  // CARREGAR DASHBOARD
+  // =========================================
+
+  useEffect(() => {
+    async function carregarDashboard() {
+      try {
+        const respostaDashboard = await fetch("/api/dashboard");
+        const resultadoDashboard = await respostaDashboard.json();
+
+        const respostaConsultas = await fetch("/api/consultas");
+        const resultadoConsultas = await respostaConsultas.json();
+
+        setDados(resultadoDashboard);
+
+        if (Array.isArray(resultadoConsultas)) {
+          setConsultas(resultadoConsultas);
+        }
+      } finally {
+        setCarregando(false);
+      }
+    }
+
+    carregarDashboard();
+  }, []);
+
+  // =========================================
+  // FORMATAR VALOR
+  // =========================================
+
+  function formatarValor(valor) {
+    return Number(valor || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  }
+
+  // =========================================
+  // FORMATAR DATA INPUT
+  // =========================================
+
+  function formatarDataInput(data) {
+    if (!data) return "";
+    return String(data).slice(0, 10);
+  }
+
+  // =========================================
+  // FORMATAR HORA
+  // =========================================
+
+  function formatarHora(hora) {
+    return hora?.slice(0, 5) || "-";
+  }
+
+  // =========================================
+  // DATA DE HOJE
+  // =========================================
+
+  function dataHojeInput() {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+    const dia = String(hoje.getDate()).padStart(2, "0");
+
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  // =========================================
+  // CONSULTAS DE HOJE
+  // =========================================
+
+  const consultasHoje = consultas
+    .filter((consulta) => formatarDataInput(consulta.data_consulta) === dataHojeInput())
+    .sort((a, b) => String(a.horario || "").localeCompare(String(b.horario || "")));
+
+  // =========================================
+  // GRÁFICO DE STATUS
+  // =========================================
+
+  const dadosStatus = [
+    {
+      nome: "Agendadas",
+      valor: consultas.filter((c) => c.status_consulta === "Agendado").length,
+    },
+    {
+      nome: "Confirmadas",
+      valor: consultas.filter((c) => c.status_consulta === "Confirmado").length,
+    },
+    {
+      nome: "Realizadas",
+      valor: consultas.filter((c) => c.status_consulta === "Realizado").length,
+    },
+    {
+      nome: "Canceladas",
+      valor: consultas.filter((c) => c.status_consulta === "Cancelado").length,
+    },
+    {
+      nome: "Faltou",
+      valor: consultas.filter((c) => c.status_consulta === "Faltou").length,
+    },
+  ];
+
+  // =========================================
+  // GRÁFICO POR TIPO
+  // =========================================
+
+  const dadosTipo = [
+    {
+      nome: "Presencial",
+      valor: consultas.filter((c) => c.tipo_atendimento === "Presencial").length,
+    },
+    {
+      nome: "Online",
+      valor: consultas.filter((c) => c.tipo_atendimento === "Online").length,
+    },
+  ];
+
+  // =========================================
+  // GRÁFICO FINANCEIRO
+  // =========================================
+
+  const dadosFinanceiros = [
+    { nome: "Receitas", valor: Number(dados.receitas || 0) },
+    { nome: "Despesas", valor: Number(dados.despesas || 0) },
+    { nome: "Lucro", valor: Number(dados.lucro || 0) },
+  ];
+
+  // =========================================
+  // GRÁFICO SEMANAL SIMPLES
+  // =========================================
 
   const dadosGrafico = [
     { dia: "Seg", consultas: 8 },
@@ -42,26 +194,15 @@ export default function Dashboard() {
     { dia: "Dom", consultas: 2 },
   ];
 
-  useEffect(() => {
-    async function carregarDashboard() {
-      try {
-        const resposta = await fetch("/api/dashboard");
-        const resultado = await resposta.json();
-        setDados(resultado);
-      } finally {
-        setCarregando(false);
-      }
-    }
+  // =========================================
+  // CORES DOS GRÁFICOS
+  // =========================================
 
-    carregarDashboard();
-  }, []);
+  const cores = ["#1d3557", "#2b4c7e", "#457b9d", "#e63946", "#f4a261"];
 
-  function formatarValor(valor) {
-    return Number(valor || 0).toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
-  }
+  // =========================================
+  // TELA
+  // =========================================
 
   return (
     <Protegido>
@@ -69,6 +210,10 @@ export default function Dashboard() {
         <Sidebar />
 
         <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
+          {/* =========================================
+              CABEÇALHO
+          ========================================= */}
+
           <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 mb-8">
             <div>
               <p className="text-[#2b4c7e] font-semibold mb-2">
@@ -103,6 +248,10 @@ export default function Dashboard() {
             <SkeletonDashboard />
           ) : (
             <>
+              {/* =========================================
+                  CARDS PRINCIPAIS
+              ========================================= */}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
                 <Card
                   titulo="Consultas"
@@ -133,6 +282,10 @@ export default function Dashboard() {
                   icone={<Package size={26} />}
                 />
               </div>
+
+              {/* =========================================
+                  VISÃO GERAL
+              ========================================= */}
 
               <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6 mb-6">
                 <div className="bg-white rounded-[34px] border border-[#1d3557]/10 shadow-sm p-6 md:p-8 overflow-hidden relative">
@@ -184,11 +337,8 @@ export default function Dashboard() {
                       <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={dadosGrafico}>
-                            <XAxis
-                              dataKey="dia"
-                              axisLine={false}
-                              tickLine={false}
-                            />
+                            <XAxis dataKey="dia" axisLine={false} tickLine={false} />
+                            <YAxis axisLine={false} tickLine={false} />
 
                             <Tooltip
                               cursor={{ fill: "transparent" }}
@@ -220,6 +370,10 @@ export default function Dashboard() {
                   </div>
                 </div>
 
+                {/* =========================================
+                    AGENDA DE HOJE
+                ========================================= */}
+
                 <div className="bg-[#1d3557] rounded-[34px] shadow-sm p-6 md:p-7 text-white overflow-hidden relative">
                   <div className="relative z-10">
                     <p className="text-blue-100 font-semibold mb-2">
@@ -231,10 +385,20 @@ export default function Dashboard() {
                     </h2>
 
                     <div className="space-y-3">
-                      <Agendamento hora="08:00" nome="Maria Oliveira" tipo="Consulta" />
-                      <Agendamento hora="09:30" nome="Carlos Souza" tipo="Retorno" />
-                      <Agendamento hora="11:00" nome="Ana Clara" tipo="Consulta" />
-                      <Agendamento hora="14:00" nome="João Pedro" tipo="Consulta" />
+                      {consultasHoje.slice(0, 5).map((consulta) => (
+                        <Agendamento
+                          key={consulta.id_consulta}
+                          hora={formatarHora(consulta.horario)}
+                          nome={consulta.paciente || "Paciente"}
+                          tipo={consulta.tipo_atendimento || "Consulta"}
+                        />
+                      ))}
+
+                      {consultasHoje.length === 0 && (
+                        <div className="bg-white/10 rounded-2xl p-5 text-blue-100">
+                          Nenhuma consulta marcada para hoje.
+                        </div>
+                      )}
                     </div>
 
                     <Link
@@ -249,6 +413,76 @@ export default function Dashboard() {
                   <div className="absolute right-16 top-20 w-20 h-20 rounded-full bg-white/10" />
                 </div>
               </div>
+
+              {/* =========================================
+                  GRÁFICOS PROFISSIONAIS
+              ========================================= */}
+
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+                <GraficoCard titulo="Status das consultas">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <PieChart>
+                      <Pie
+                        data={dadosStatus}
+                        dataKey="valor"
+                        nameKey="nome"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={90}
+                        label
+                      >
+                        {dadosStatus.map((item, index) => (
+                          <Cell
+                            key={item.nome}
+                            fill={cores[index % cores.length]}
+                          />
+                        ))}
+                      </Pie>
+
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </GraficoCard>
+
+                <GraficoCard titulo="Tipos de atendimento">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={dadosTipo}>
+                      <XAxis dataKey="nome" axisLine={false} tickLine={false} />
+                      <YAxis axisLine={false} tickLine={false} />
+                      <Tooltip />
+
+                      <Bar
+                        dataKey="valor"
+                        radius={[12, 12, 0, 0]}
+                        fill="#1d3557"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </GraficoCard>
+
+                <GraficoCard titulo="Financeiro">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <LineChart data={dadosFinanceiros}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="nome" axisLine={false} tickLine={false} />
+                      <YAxis axisLine={false} tickLine={false} />
+                      <Tooltip />
+
+                      <Line
+                        type="monotone"
+                        dataKey="valor"
+                        stroke="#1d3557"
+                        strokeWidth={4}
+                        dot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </GraficoCard>
+              </div>
+
+              {/* =========================================
+                  MINI CARDS
+              ========================================= */}
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
                 <MiniCard
@@ -270,9 +504,9 @@ export default function Dashboard() {
                 />
 
                 <MiniCard
-                  titulo="Financeiro"
-                  texto={`Receitas atuais: ${formatarValor(dados.receitas)}`}
-                  icone={<Wallet size={26} />}
+                  titulo="Crescimento"
+                  texto="Acompanhe indicadores da clínica em tempo real."
+                  icone={<TrendingUp size={26} />}
                 />
               </div>
             </>
@@ -282,6 +516,10 @@ export default function Dashboard() {
     </Protegido>
   );
 }
+
+// =========================================
+// SKELETON
+// =========================================
 
 function SkeletonDashboard() {
   return (
@@ -322,6 +560,10 @@ function SkeletonDashboard() {
   );
 }
 
+// =========================================
+// CARD PRINCIPAL
+// =========================================
+
 function Card({ titulo, valor, descricao, icone, menor }) {
   return (
     <motion.div
@@ -354,6 +596,10 @@ function Card({ titulo, valor, descricao, icone, menor }) {
   );
 }
 
+// =========================================
+// INDICADOR
+// =========================================
+
 function Indicador({ titulo, valor, detalhe }) {
   return (
     <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10">
@@ -363,6 +609,10 @@ function Indicador({ titulo, valor, detalhe }) {
     </div>
   );
 }
+
+// =========================================
+// AGENDAMENTO
+// =========================================
 
 function Agendamento({ hora, nome, tipo }) {
   return (
@@ -376,6 +626,10 @@ function Agendamento({ hora, nome, tipo }) {
     </div>
   );
 }
+
+// =========================================
+// MINI CARD
+// =========================================
 
 function MiniCard({ titulo, texto, icone }) {
   return (
@@ -394,5 +648,18 @@ function MiniCard({ titulo, texto, icone }) {
 
       <p className="text-gray-500 text-sm leading-relaxed">{texto}</p>
     </motion.div>
+  );
+}
+
+// =========================================
+// CARD DE GRÁFICO
+// =========================================
+
+function GraficoCard({ titulo, children }) {
+  return (
+    <div className="bg-white rounded-[34px] border border-[#1d3557]/10 shadow-sm p-6">
+      <h3 className="text-xl font-bold text-[#1d3557] mb-5">{titulo}</h3>
+      {children}
+    </div>
   );
 }
