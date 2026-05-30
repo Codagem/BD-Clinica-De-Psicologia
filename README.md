@@ -295,7 +295,8 @@ Sendo está a forma como os funcionarios veram as fichas no sistema.
 
 <h2>💰 Custo de Implementação</h2>
 
-<p> O custo de implementação deste programa será de R$xx.</p>
+<p> O custo de implementação deste programa será de R$30.000,00.</p>
+<p> E seu valor mensal de R$350,00.</p>
 
 <hr>
 
