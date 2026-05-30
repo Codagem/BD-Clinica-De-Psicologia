@@ -158,7 +158,7 @@ Ao inserir ou atualizar um produto, verifica se a quantidade está abaixo do mí
 </ul>
 
 <p align="center">
-<img src="./imagens/triggers.png" width="900">
+<img width="550" alt="Captura de tela 2026-05-29 222055" src="https://github.com/user-attachments/assets/7d5db579-6d3a-474c-8099-b004179dcd28" />
 </p>
 
 <hr>
@@ -226,26 +226,6 @@ Com elas, a aplicação pode executar chamadas simples para registrar informaç�
 
 <p align="center">
 <img width="700" alt="Captura de tela 2026-05-26 232006" src="https://github.com/user-attachments/assets/8cc73882-2a1b-4560-a582-a8a237181e1e" />
-</p>
-
-<hr>
-
-<h2>🖥️ Exemplo de funcionamento</h2>
-
-<p>
-Abaixo um exemplo de execução do banco em funcionamento no PostgreSQL.
-</p>
-
-<p>
-A imagem pode mostrar uma procedure sendo executada, uma view sendo consultada ou uma trigger funcionando automaticamente após um insert.
-</p>
-
-<p>
-Sendo está a forma como os funcionarios veram as fichas no sistema.
-</p>
-
-<p align="center">
-<img width="650" alt="Captura de tela 2026-05-26 232512" src="https://github.com/user-attachments/assets/3bc783d8-0c94-4b91-902e-60a2b7dc0320" />
 </p>
 
 <hr>
