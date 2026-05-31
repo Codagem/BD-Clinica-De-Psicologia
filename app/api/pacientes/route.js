@@ -81,7 +81,7 @@ export async function PUT(req) {
         profissao = $4
       WHERE id_paciente = $5
       `,
-      [nome_completo, cpf, telefone, profissao, id]
+      [nome_completo, cpf, telefone, profissao, Number(id)]
     );
 
     return Response.json({ mensagem: "Paciente atualizado" });
@@ -94,12 +94,34 @@ export async function DELETE(req) {
   try {
     const { id } = await req.json();
 
+    if (!id) {
+      return Response.json({
+        erro: "ID do paciente é obrigatório.",
+      });
+    }
+
+    const consultas = await pool.query(
+      `
+      SELECT COUNT(*) 
+      FROM consultas
+      WHERE id_paciente = $1
+      `,
+      [Number(id)]
+    );
+
+    if (Number(consultas.rows[0].count) > 0) {
+      return Response.json({
+        erro:
+          "Este paciente possui consultas cadastradas. Exclua ou remova as consultas antes de excluir o paciente.",
+      });
+    }
+
     await pool.query(
       `
       DELETE FROM usuarios_pacientes
       WHERE id_paciente = $1
       `,
-      [id]
+      [Number(id)]
     );
 
     await pool.query(
@@ -107,7 +129,7 @@ export async function DELETE(req) {
       DELETE FROM pacientes
       WHERE id_paciente = $1
       `,
-      [id]
+      [Number(id)]
     );
 
     return Response.json({ mensagem: "Paciente removido" });
