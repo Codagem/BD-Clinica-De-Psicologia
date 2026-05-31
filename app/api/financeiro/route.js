@@ -10,6 +10,7 @@ export async function GET() {
       SELECT
         pg.id_pagamento,
         pg.id_consulta,
+        p.id_paciente,
         p.nome_completo AS paciente,
         pg.valor,
         pg.forma_pagamento,
