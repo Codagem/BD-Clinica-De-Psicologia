@@ -280,6 +280,12 @@ Com elas, a aplicação pode executar chamadas simples para registrar informaç�
 
 <hr>
 
+<h2>▶️ Front-End do projeto</h2>
+
+<p></p>
+
+<hr>
+
 <p align="center">
 Desenvolvido para fins acadêmicos e gerenciamento clínico 🧠
 </p>
