@@ -7,6 +7,8 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import Sidebar from "../components/Sidebar";
 import Protegido from "../components/Protegido";
 
@@ -180,6 +182,53 @@ export default function Estoque() {
   }
 
   // =========================================
+  // EXPORTAR PDF ESTOQUE
+  // =========================================
+
+  function exportarPDFEstoque() {
+    const doc = new jsPDF();
+
+    doc.setFontSize(20);
+    doc.text("Clínica de Psicologia", 14, 20);
+
+    doc.setFontSize(11);
+    doc.text(
+      `Relatório de Estoque - ${new Date().toLocaleDateString("pt-BR")}`,
+      14,
+      30
+    );
+
+    doc.setFontSize(12);
+    doc.text(`Total de produtos: ${produtos.length}`, 14, 45);
+    doc.text(`Estoque baixo: ${produtosBaixos}`, 14, 55);
+    doc.text(`Estoque normal: ${produtosNormais}`, 14, 65);
+
+    autoTable(doc, {
+      startY: 80,
+      head: [
+        [
+          "Produto",
+          "Categoria",
+          "Qtd. Atual",
+          "Qtd. Mínima",
+          "Fornecedor",
+          "Status",
+        ],
+      ],
+      body: produtos.map((produto) => [
+        produto.nome || "-",
+        produto.categoria || "-",
+        produto.quantidade_atual || "0",
+        produto.quantidade_minima || "0",
+        produto.fornecedor || "-",
+        estoqueBaixo(produto) ? "Baixo" : "Normal",
+      ]),
+    });
+
+    doc.save("estoque-clinica.pdf");
+  }
+
+  // =========================================
   // CÁLCULOS DOS CARDS
   // =========================================
 
@@ -220,18 +269,27 @@ export default function Estoque() {
               </p>
             </div>
 
-            <button
-              onClick={() => {
-                if (mostrarFormulario) {
-                  limparFormulario();
-                } else {
-                  setMostrarFormulario(true);
-                }
-              }}
-              className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
-            >
-              + Novo Produto
-            </button>
+            <div className="flex flex-col md:flex-row gap-3">
+              <button
+                onClick={exportarPDFEstoque}
+                className="bg-green-600 text-white px-6 py-3 rounded-2xl shadow hover:bg-green-700 hover:scale-[1.02] active:scale-[0.98] transition"
+              >
+                Exportar PDF
+              </button>
+
+              <button
+                onClick={() => {
+                  if (mostrarFormulario) {
+                    limparFormulario();
+                  } else {
+                    setMostrarFormulario(true);
+                  }
+                }}
+                className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
+              >
+                + Novo Produto
+              </button>
+            </div>
           </div>
 
           {/* =========================================
