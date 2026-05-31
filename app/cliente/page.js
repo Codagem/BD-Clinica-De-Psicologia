@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { motion } from "framer-motion";
 
 const frases = [
   "Você não precisa vencer todos os dias. Alguns dias, apenas continuar já é uma grande vitória.",
@@ -38,10 +39,7 @@ export default function Cliente() {
     }
 
     setIdPaciente(pacienteId);
-
-    const fraseAleatoria = frases[Math.floor(Math.random() * frases.length)];
-    setFrase(fraseAleatoria);
-
+    setFrase(frases[Math.floor(Math.random() * frases.length)]);
     carregarDadosPaciente(pacienteId);
   }, [router]);
 
@@ -146,107 +144,104 @@ export default function Cliente() {
 
   const hoje = new Date();
 
-  const consultasFuturas = consultas.filter((consulta) => {
-    const dataConsulta = new Date(consulta.data_consulta);
-    return dataConsulta >= new Date(hoje.toDateString());
-  });
+  const consultasFuturas = consultas
+    .filter((consulta) => {
+      const dataConsulta = new Date(consulta.data_consulta);
+      return dataConsulta >= new Date(hoje.toDateString());
+    })
+    .sort((a, b) => {
+      const dataA = `${a.data_consulta || ""} ${a.horario || ""}`;
+      const dataB = `${b.data_consulta || ""} ${b.horario || ""}`;
+      return dataA.localeCompare(dataB);
+    });
 
-  const historicoConsultas = consultas.filter((consulta) => {
-    const dataConsulta = new Date(consulta.data_consulta);
-    return dataConsulta < new Date(hoje.toDateString());
-  });
+  const historicoConsultas = consultas
+    .filter((consulta) => {
+      const dataConsulta = new Date(consulta.data_consulta);
+      return dataConsulta < new Date(hoje.toDateString());
+    })
+    .sort((a, b) => {
+      const dataA = `${a.data_consulta || ""} ${a.horario || ""}`;
+      const dataB = `${b.data_consulta || ""} ${b.horario || ""}`;
+      return dataB.localeCompare(dataA);
+    });
 
   const proximaConsulta = consultasFuturas[0];
 
   return (
-    <div className="min-h-screen bg-[#fbfaf7] p-4 md:p-10">
-      <div className="max-w-7xl mx-auto">
-        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-10">
-          <div>
-            <p className="text-[#2b4c7e] font-semibold mb-2">
-              Área reservada do paciente
-            </p>
+    <div className="min-h-screen bg-[#f5f1eb]">
+      <main className="max-w-7xl mx-auto p-4 md:p-8">
+        <motion.header
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-[40px] bg-[#1d3557] text-white p-7 md:p-12 shadow-xl mb-8"
+        >
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+            <div>
+              <p className="text-blue-100 font-semibold mb-3">
+                Portal Premium do Paciente
+              </p>
 
-            <h1 className="text-3xl md:text-5xl font-bold text-[#1d3557]">
-              Olá, {paciente?.nome_completo || "paciente"}
-            </h1>
+              <h1 className="text-3xl md:text-6xl font-bold tracking-tight">
+                Olá, {paciente?.nome_completo || "paciente"}
+              </h1>
 
-            <p className="text-gray-500 mt-3 max-w-xl">
-              Este é um espaço seguro para acompanhar seus dados, suas consultas
-              e sua jornada terapêutica.
-            </p>
-          </div>
+              <p className="text-blue-100 mt-4 max-w-2xl leading-relaxed">
+                Acompanhe suas consultas, confirme sua presença e veja suas
+                informações cadastradas em um ambiente reservado e seguro.
+              </p>
+            </div>
 
-          <button
-            onClick={sair}
-            className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 transition"
-          >
-            Sair
-          </button>
-        </header>
+            <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-3xl p-5 min-w-[240px]">
+              <p className="text-blue-100 text-sm">Acesso ativo</p>
+              <h2 className="text-2xl font-bold mt-1">Área reservada</h2>
 
-        <section className="bg-[#1d3557] rounded-[36px] p-8 md:p-12 text-white shadow-sm relative overflow-hidden mb-8">
-          <div className="relative z-10 max-w-3xl">
-            <p className="text-blue-100 font-semibold mb-4">
-              Mensagem para hoje
-            </p>
-
-            <h2 className="text-3xl md:text-5xl font-serif leading-tight">
-              “{frase}”
-            </h2>
-
-            <p className="text-blue-100 mt-6">
-              Uma frase diferente será exibida sempre que você acessar esta área.
-            </p>
+              <button
+                onClick={sair}
+                className="mt-5 w-full bg-white text-[#1d3557] py-3 rounded-2xl font-semibold hover:bg-[#f3f1eb] transition"
+              >
+                Sair
+              </button>
+            </div>
           </div>
 
           <div className="absolute right-8 bottom-0 text-[220px] opacity-[0.06] select-none">
             Ψ
           </div>
-        </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-6 mb-8">
-          <div className="bg-white rounded-3xl p-6 border border-[#1d3557]/10 shadow-sm">
-            <p className="text-[#2b4c7e] font-semibold mb-2">Meus dados</p>
+          <div className="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full" />
+          <div className="absolute right-40 bottom-10 w-24 h-24 bg-white/10 rounded-full" />
+        </motion.header>
 
-            <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
-              Informações cadastradas
-            </h2>
-
-            <div className="space-y-3">
-              <Info label="Nome" valor={paciente?.nome_completo || "-"} />
-              <Info label="CPF" valor={paciente?.cpf || "-"} />
-              <Info label="Telefone" valor={paciente?.telefone || "-"} />
-              <Info label="Profissão" valor={paciente?.profissao || "-"} />
-            </div>
-
-            <button
-              onClick={() => setMostrarSenha(!mostrarSenha)}
-              className="mt-6 w-full bg-[#1d3557] text-white py-3 rounded-2xl hover:opacity-90 transition"
-            >
-              Alterar senha
-            </button>
-          </div>
-
-          <div className="bg-white rounded-3xl p-6 border border-[#1d3557]/10 shadow-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-6 mb-8">
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-[34px] p-6 md:p-8 border border-[#1d3557]/10 shadow-sm"
+          >
             <p className="text-[#2b4c7e] font-semibold mb-2">
               Próximo atendimento
             </p>
 
-            <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
-              Consulta agendada
+            <h2 className="text-3xl font-bold text-[#1d3557] mb-6">
+              Sua próxima consulta
             </h2>
 
             {proximaConsulta ? (
-              <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="bg-[#fbfaf7] rounded-3xl p-6 border border-[#1d3557]/10">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
                   <div>
-                    <p className="text-gray-500 text-sm">Data e horário</p>
+                    <p className="text-gray-500 text-sm mb-1">
+                      Data e horário
+                    </p>
 
-                    <h3 className="text-3xl font-bold text-[#1d3557] mt-1">
-                      {formatarData(proximaConsulta.data_consulta)} às{" "}
-                      {formatarHora(proximaConsulta.horario)}
+                    <h3 className="text-3xl md:text-4xl font-bold text-[#1d3557]">
+                      {formatarData(proximaConsulta.data_consulta)}
                     </h3>
+
+                    <p className="text-xl font-semibold text-[#2b4c7e] mt-1">
+                      às {formatarHora(proximaConsulta.horario)}
+                    </p>
                   </div>
 
                   <span
@@ -258,7 +253,7 @@ export default function Cliente() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-6">
                   <MiniInfo
                     titulo="Psicólogo(a)"
                     valor={proximaConsulta.psicologo || "-"}
@@ -280,93 +275,156 @@ export default function Cliente() {
                     onClick={() =>
                       confirmarConsulta(proximaConsulta.id_consulta)
                     }
-                    className="mt-5 bg-[#1d3557] text-white px-6 py-3 rounded-2xl hover:opacity-90 transition"
+                    className="mt-6 bg-[#1d3557] text-white px-6 py-3 rounded-2xl font-semibold hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
                   >
                     Confirmar presença
                   </button>
                 )}
               </div>
             ) : (
-              <div className="bg-[#fbfaf7] rounded-3xl p-8 text-center text-gray-500">
-                Nenhuma consulta futura encontrada.
+              <div className="bg-[#fbfaf7] rounded-3xl p-8 text-center border border-[#1d3557]/10">
+                <div className="text-5xl mb-4">🌿</div>
+
+                <h3 className="text-2xl font-bold text-[#1d3557]">
+                  Nenhuma consulta futura
+                </h3>
+
+                <p className="text-gray-500 mt-2">
+                  Quando uma nova consulta for agendada, ela aparecerá aqui.
+                </p>
               </div>
             )}
-          </div>
-        </div>
+          </motion.section>
 
-        {mostrarSenha && (
-          <div className="bg-white rounded-3xl p-6 border border-[#1d3557]/10 shadow-sm mb-8">
-            <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
-              Alterar senha
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-[34px] p-6 md:p-8 border border-[#1d3557]/10 shadow-sm"
+          >
+            <p className="text-[#2b4c7e] font-semibold mb-2">
+              Mensagem para hoje
+            </p>
+
+            <h2 className="text-2xl md:text-3xl font-serif text-[#1d3557] leading-tight">
+              “{frase}”
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input
-                type="password"
-                placeholder="Senha atual"
-                value={senhaAtual}
-                onChange={(e) => setSenhaAtual(e.target.value)}
-                className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <CardInfo
+                titulo="Consultas futuras"
+                valor={consultasFuturas.length}
+                texto="Atendimentos agendados"
               />
 
-              <input
-                type="password"
-                placeholder="Nova senha"
-                value={novaSenha}
-                onChange={(e) => setNovaSenha(e.target.value)}
-                className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+              <CardInfo
+                titulo="Histórico"
+                valor={historicoConsultas.length}
+                texto="Consultas anteriores"
               />
+            </div>
+          </motion.section>
+        </div>
 
-              <input
-                type="password"
-                placeholder="Confirmar nova senha"
-                value={confirmarSenha}
-                onChange={(e) => setConfirmarSenha(e.target.value)}
-                className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
-              />
+        <div className="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-6 mb-8">
+          <section className="bg-white rounded-[34px] p-6 border border-[#1d3557]/10 shadow-sm h-fit">
+            <p className="text-[#2b4c7e] font-semibold mb-2">Meus dados</p>
+
+            <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
+              Informações cadastradas
+            </h2>
+
+            <div className="space-y-3">
+              <Info label="Nome" valor={paciente?.nome_completo || "-"} />
+              <Info label="CPF" valor={paciente?.cpf || "-"} />
+              <Info label="Telefone" valor={paciente?.telefone || "-"} />
+              <Info label="Profissão" valor={paciente?.profissao || "-"} />
             </div>
 
             <button
-              onClick={alterarSenha}
-              className="mt-5 bg-[#1d3557] text-white px-6 py-3 rounded-2xl hover:opacity-90 transition"
+              onClick={() => setMostrarSenha(!mostrarSenha)}
+              className="mt-6 w-full bg-[#1d3557] text-white py-3 rounded-2xl font-semibold hover:opacity-90 transition"
             >
-              Salvar nova senha
+              {mostrarSenha ? "Cancelar alteração" : "Alterar senha"}
             </button>
-          </div>
-        )}
+          </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-          <Card
-            titulo="Consultas futuras"
-            texto={`${consultasFuturas.length} atendimento(s) agendado(s).`}
-            icone="📅"
-          />
+          <section className="bg-white rounded-[34px] p-6 border border-[#1d3557]/10 shadow-sm">
+            <p className="text-[#2b4c7e] font-semibold mb-2">
+              Segurança da conta
+            </p>
 
-          <Card
-            titulo="Histórico"
-            texto={`${historicoConsultas.length} consulta(s) já realizada(s) ou anteriores.`}
-            icone="🧾"
-          />
-
-          <Card
-            titulo="Orientações"
-            texto="Aqui poderão ficar mensagens e recomendações da clínica."
-            icone="📝"
-          />
-        </div>
-
-        <section className="bg-white rounded-3xl border border-[#1d3557]/10 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-100">
-            <h2 className="text-2xl font-bold text-[#1d3557]">
-              Minhas consultas
+            <h2 className="text-2xl font-bold text-[#1d3557] mb-5">
+              Alteração de senha
             </h2>
 
-            <p className="text-gray-500 text-sm mt-1">
-              Veja seus atendimentos agendados e seu histórico.
-            </p>
+            {mostrarSenha ? (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <input
+                    type="password"
+                    placeholder="Senha atual"
+                    value={senhaAtual}
+                    onChange={(e) => setSenhaAtual(e.target.value)}
+                    className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                  />
+
+                  <input
+                    type="password"
+                    placeholder="Nova senha"
+                    value={novaSenha}
+                    onChange={(e) => setNovaSenha(e.target.value)}
+                    className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                  />
+
+                  <input
+                    type="password"
+                    placeholder="Confirmar nova senha"
+                    value={confirmarSenha}
+                    onChange={(e) => setConfirmarSenha(e.target.value)}
+                    className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                  />
+                </div>
+
+                <button
+                  onClick={alterarSenha}
+                  className="mt-5 bg-[#1d3557] text-white px-6 py-3 rounded-2xl font-semibold hover:opacity-90 transition"
+                >
+                  Salvar nova senha
+                </button>
+              </motion.div>
+            ) : (
+              <div className="bg-[#fbfaf7] rounded-3xl p-6 border border-[#1d3557]/10">
+                <p className="text-gray-500 leading-relaxed">
+                  Para manter sua conta segura, você pode alterar sua senha a
+                  qualquer momento. Clique em “Alterar senha” para abrir o
+                  formulário.
+                </p>
+              </div>
+            )}
+          </section>
+        </div>
+
+        <section className="bg-white rounded-[34px] border border-[#1d3557]/10 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-[#1d3557]">
+                Minhas consultas
+              </h2>
+
+              <p className="text-gray-500 text-sm mt-1">
+                Veja seus atendimentos agendados e seu histórico.
+              </p>
+            </div>
+
+            <div className="bg-[#f3f1eb] text-[#1d3557] px-4 py-2 rounded-2xl text-sm font-semibold">
+              {consultas.length} consulta(s)
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[1000px]">
               <thead className="bg-[#f3f1eb] text-[#1d3557]">
                 <tr>
@@ -437,8 +495,62 @@ export default function Cliente() {
               </tbody>
             </table>
           </div>
+
+          <div className="md:hidden p-4 space-y-4">
+            {consultas.map((consulta) => (
+              <motion.div
+                key={consulta.id_consulta}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <p className="text-xs text-gray-500">Consulta</p>
+
+                    <h3 className="text-xl font-bold text-[#1d3557] mt-1">
+                      {formatarData(consulta.data_consulta)} às{" "}
+                      {formatarHora(consulta.horario)}
+                    </h3>
+                  </div>
+
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${corStatus(
+                      consulta.status_consulta
+                    )}`}
+                  >
+                    {consulta.status_consulta}
+                  </span>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <Info label="Psicólogo" valor={consulta.psicologo || "-"} />
+                  <Info label="Tipo" valor={consulta.tipo_atendimento || "-"} />
+                  <Info
+                    label="Observações"
+                    valor={consulta.observacoes || "-"}
+                  />
+                </div>
+
+                {consulta.status_consulta === "Agendado" && (
+                  <button
+                    onClick={() => confirmarConsulta(consulta.id_consulta)}
+                    className="mt-5 w-full bg-[#1d3557] text-white py-3 rounded-2xl font-semibold hover:opacity-90 transition"
+                  >
+                    Confirmar presença
+                  </button>
+                )}
+              </motion.div>
+            ))}
+
+            {consultas.length === 0 && (
+              <div className="p-8 text-center text-gray-500">
+                Nenhuma consulta encontrada.
+              </div>
+            )}
+          </div>
         </section>
-      </div>
+      </main>
     </div>
   );
 }
@@ -461,16 +573,12 @@ function MiniInfo({ titulo, valor }) {
   );
 }
 
-function Card({ titulo, texto, icone }) {
+function CardInfo({ titulo, valor, texto }) {
   return (
-    <div className="bg-white rounded-3xl p-6 border border-[#1d3557]/10 shadow-sm">
-      <div className="w-14 h-14 rounded-2xl bg-[#1d3557]/10 flex items-center justify-center text-2xl mb-5">
-        {icone}
-      </div>
-
-      <h3 className="text-xl font-bold text-[#1d3557] mb-2">{titulo}</h3>
-
-      <p className="text-gray-500 text-sm leading-relaxed">{texto}</p>
+    <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-[#1d3557]/10">
+      <p className="text-gray-500 text-sm">{titulo}</p>
+      <h3 className="text-4xl font-bold text-[#1d3557] mt-2">{valor}</h3>
+      <p className="text-gray-400 text-xs mt-1">{texto}</p>
     </div>
   );
 }
