@@ -145,6 +145,22 @@ export async function DELETE(req) {
       });
     }
 
+    const pagamentos = await pool.query(
+      `
+      SELECT COUNT(*)
+      FROM pagamentos
+      WHERE id_consulta = $1
+      `,
+      [Number(id_consulta)]
+    );
+
+    if (Number(pagamentos.rows[0].count) > 0) {
+      return Response.json({
+        erro:
+          "Esta consulta possui pagamento vinculado. Exclua o pagamento antes de excluir a consulta.",
+      });
+    }
+
     await pool.query(
       `
       DELETE FROM consultas
