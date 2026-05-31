@@ -1,7 +1,15 @@
 "use client";
 
+// =========================================
+// IMPORTAÇÕES
+// =========================================
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+// =========================================
+// COMPONENTE LOGIN
+// =========================================
 
 export default function Login() {
   const router = useRouter();
@@ -10,21 +18,37 @@ export default function Login() {
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
 
+  // =========================================
+  // ENTRAR NO SISTEMA
+  // =========================================
+
   async function entrar(e) {
     e.preventDefault();
 
+    if (!usuario.trim() || !senha.trim()) {
+      alert("Preencha usuário e senha.");
+      return;
+    }
+
     setCarregando(true);
 
+    // =========================================
     // LOGIN ADMIN
+    // =========================================
+
     if (usuario === "admin" && senha === "123") {
       localStorage.setItem("logado", "true");
       localStorage.setItem("tipo_usuario", "admin");
+      localStorage.removeItem("id_paciente");
 
       router.push("/");
       return;
     }
 
+    // =========================================
     // LOGIN PACIENTE PELO BANCO
+    // =========================================
+
     try {
       const resposta = await fetch("/api/login-paciente", {
         method: "POST",
@@ -47,10 +71,7 @@ export default function Login() {
 
       localStorage.setItem("logado", "true");
       localStorage.setItem("tipo_usuario", "paciente");
-      localStorage.setItem(
-        "id_paciente",
-        resultado.id_paciente
-      );
+      localStorage.setItem("id_paciente", resultado.id_paciente);
 
       router.push("/cliente");
     } catch (error) {
@@ -59,10 +80,24 @@ export default function Login() {
     }
   }
 
+  // =========================================
+  // SUPORTE
+  // =========================================
+
+  function abrirSuporte() {
+    window.open(
+      "https://wa.me/5581999875045?text=Olá,%20preciso%20de%20suporte%20para%20acessar%20o%20sistema%20da%20clínica.",
+      "_blank"
+    );
+  }
+
+  // =========================================
+  // TELA
+  // =========================================
+
   return (
     <div className="min-h-screen bg-[#f5f1eb] flex items-center justify-center p-4">
       <div className="w-full max-w-5xl bg-white rounded-[34px] overflow-hidden shadow-2xl grid md:grid-cols-2">
-
         <div className="hidden md:block relative min-h-[620px]">
           <img
             src="/login-clinica.jpg.png"
@@ -85,21 +120,17 @@ export default function Login() {
 
         <div className="flex items-center justify-center p-8 md:p-14">
           <div className="w-full max-w-md text-center">
-
-            <div className="text-[#1d3557] text-5xl mb-4">
-              Ψ
-            </div>
+            <div className="text-[#1d3557] text-5xl mb-4">Ψ</div>
 
             <h1 className="text-5xl font-serif text-[#1d3557] mb-2">
               Clínica Psi
             </h1>
 
             <p className="text-gray-500 mb-10">
-              Acesse o sistema
+              Sistema de gestão clínica
             </p>
 
             <form onSubmit={entrar} className="space-y-5 text-left">
-
               <input
                 type="text"
                 placeholder="Usuário"
@@ -122,7 +153,13 @@ export default function Login() {
                   Lembrar de mim
                 </label>
 
-                <span>Esqueci minha senha</span>
+                <button
+                  type="button"
+                  onClick={abrirSuporte}
+                  className="hover:text-[#1d3557] transition"
+                >
+                  Esqueci minha senha
+                </button>
               </div>
 
               <button
@@ -135,47 +172,28 @@ export default function Login() {
             </form>
 
             <div className="mt-10 bg-[#f8f7f4] rounded-3xl p-5 text-left border border-gray-100">
-              <p className="text-sm text-gray-500 mb-3 font-semibold">
-                Acessos de teste
+              <p className="text-sm text-gray-500 mb-2 font-semibold">
+                Acesso restrito
               </p>
 
-              <div className="space-y-3 text-sm">
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Este sistema é destinado apenas a usuários autorizados da
+                clínica. Para recuperar acesso ou solicitar suporte, entre em
+                contato com a administração.
+              </p>
 
-                <div className="bg-white rounded-2xl p-4 border border-gray-100">
-                  <p className="font-semibold text-[#1d3557]">
-                    Administração
-                  </p>
-
-                  <p className="text-gray-600 mt-1">
-                    Usuário: admin
-                  </p>
-
-                  <p className="text-gray-600">
-                    Senha: 123
-                  </p>
-                </div>
-
-                <div className="bg-white rounded-2xl p-4 border border-gray-100">
-                  <p className="font-semibold text-[#1d3557]">
-                    Paciente
-                  </p>
-
-                  <p className="text-gray-600 mt-1">
-                    Usuário: paciente
-                  </p>
-
-                  <p className="text-gray-600">
-                    Senha: 123
-                  </p>
-                </div>
-
-              </div>
+              <button
+                type="button"
+                onClick={abrirSuporte}
+                className="mt-4 w-full border border-[#1d3557]/15 text-[#1d3557] py-3 rounded-2xl hover:bg-white transition"
+              >
+                Falar com suporte
+              </button>
             </div>
 
             <p className="text-center text-gray-400 mt-10 text-sm">
-              Precisa de ajuda? Entre em contato conosco.
+              Clínica Psi © Sistema de Gestão Clínica
             </p>
-
           </div>
         </div>
       </div>
