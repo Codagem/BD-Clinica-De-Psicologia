@@ -1,15 +1,7 @@
 "use client";
 
-// =========================================
-// IMPORTAÇÕES
-// =========================================
-
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-
-// =========================================
-// COMPONENTE PROTEGIDO
-// =========================================
 
 export default function Protegido({ children }) {
   const router = useRouter();
@@ -17,45 +9,46 @@ export default function Protegido({ children }) {
 
   const [autorizado, setAutorizado] = useState(false);
 
-  // =========================================
-  // VERIFICAR LOGIN E PERMISSÃO
-  // =========================================
-
   useEffect(() => {
     const logado = localStorage.getItem("logado");
     const tipoUsuario = localStorage.getItem("tipo_usuario");
+    const idPaciente = localStorage.getItem("id_paciente");
 
     if (logado !== "true") {
       router.replace("/login");
       return;
     }
 
-    const rotasBloqueadasPaciente = [
-      "/",
-      "/pacientes",
-      "/consultas",
-      "/financeiro",
-      "/estoque",
-    ];
+    if (tipoUsuario === "paciente") {
+      if (!idPaciente) {
+        router.replace("/login");
+        return;
+      }
 
-    if (
-      tipoUsuario === "paciente" &&
-      rotasBloqueadasPaciente.includes(pathname)
-    ) {
-      router.replace("/cliente");
+      if (pathname !== "/cliente") {
+        router.replace("/cliente");
+        return;
+      }
+    }
+
+    if (tipoUsuario === "admin") {
+      if (pathname === "/cliente") {
+        router.replace("/");
+        return;
+      }
+    }
+
+    if (tipoUsuario !== "admin" && tipoUsuario !== "paciente") {
+      router.replace("/login");
       return;
     }
 
     setAutorizado(true);
   }, [pathname, router]);
 
-  // =========================================
-  // CARREGANDO
-  // =========================================
-
   if (!autorizado) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-black bg-[#fbfaf7]">
+      <div className="min-h-screen flex items-center justify-center bg-[#fbfaf7] text-[#1d3557] font-semibold">
         Carregando...
       </div>
     );
