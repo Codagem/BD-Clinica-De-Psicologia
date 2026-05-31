@@ -7,6 +7,8 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import Sidebar from "../components/Sidebar";
 import Protegido from "../components/Protegido";
 
@@ -38,34 +40,18 @@ function formatarTelefone(valor) {
 // =========================================
 
 export default function Pacientes() {
-  // =========================================
-  // STATES PRINCIPAIS
-  // =========================================
-
   const [pacientes, setPacientes] = useState([]);
   const [consultas, setConsultas] = useState([]);
+  const [pagamentos, setPagamentos] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
   const [pesquisa, setPesquisa] = useState("");
-
-  // =========================================
-  // STATE DO HISTÓRICO
-  // =========================================
-
   const [pacienteHistorico, setPacienteHistorico] = useState(null);
-
-  // =========================================
-  // STATES DO FORMULÁRIO
-  // =========================================
 
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
   const [telefone, setTelefone] = useState("");
   const [profissao, setProfissao] = useState("");
-
-  // =========================================
-  // CARREGAR PACIENTES
-  // =========================================
 
   async function carregarPacientes() {
     const resposta = await fetch("/api/pacientes");
@@ -79,10 +65,6 @@ export default function Pacientes() {
     }
   }
 
-  // =========================================
-  // CARREGAR CONSULTAS
-  // =========================================
-
   async function carregarConsultas() {
     const resposta = await fetch("/api/consultas");
     const dados = await resposta.json();
@@ -95,9 +77,17 @@ export default function Pacientes() {
     }
   }
 
-  // =========================================
-  // CADASTRAR OU EDITAR PACIENTE
-  // =========================================
+  async function carregarFinanceiro() {
+    const resposta = await fetch("/api/financeiro");
+    const dados = await resposta.json();
+
+    if (Array.isArray(dados.pagamentos)) {
+      setPagamentos(dados.pagamentos);
+    } else {
+      setPagamentos([]);
+      console.log(dados);
+    }
+  }
 
   async function cadastrarPaciente() {
     try {
@@ -137,10 +127,6 @@ export default function Pacientes() {
     }
   }
 
-  // =========================================
-  // EXCLUIR PACIENTE
-  // =========================================
-
   async function deletarPaciente(id) {
     const confirmar = confirm("Deseja realmente excluir este paciente?");
     if (!confirmar) return;
@@ -159,10 +145,6 @@ export default function Pacientes() {
     }
   }
 
-  // =========================================
-  // EDITAR PACIENTE
-  // =========================================
-
   function editarPaciente(paciente) {
     setNome(paciente.nome_completo || "");
     setCpf(paciente.cpf || "");
@@ -177,10 +159,6 @@ export default function Pacientes() {
     });
   }
 
-  // =========================================
-  // ABRIR HISTÓRICO
-  // =========================================
-
   function abrirHistorico(paciente) {
     setPacienteHistorico(paciente);
 
@@ -190,33 +168,13 @@ export default function Pacientes() {
     });
   }
 
-  // =========================================
-  // FECHAR HISTÓRICO
-  // =========================================
-
   function fecharHistorico() {
     setPacienteHistorico(null);
   }
 
-  // =========================================
-  // NOVA CONSULTA
-  // =========================================
-
   function novaConsulta() {
     window.location.href = "/consultas";
   }
-
-  // =========================================
-  // VER ANAMNESE
-  // =========================================
-
-  function verAnamnese() {
-    toast("Área de anamnese será integrada na próxima etapa.");
-  }
-
-  // =========================================
-  // LIMPAR FORMULÁRIO
-  // =========================================
 
   function limparFormulario() {
     setNome("");
@@ -227,26 +185,15 @@ export default function Pacientes() {
     setMostrarFormulario(false);
   }
 
-  // =========================================
-  // CARREGAMENTO INICIAL
-  // =========================================
-
   useEffect(() => {
     carregarPacientes();
     carregarConsultas();
+    carregarFinanceiro();
   }, []);
-
-  // =========================================
-  // FILTRO DE PACIENTES
-  // =========================================
 
   const pacientesFiltrados = pacientes.filter((paciente) =>
     paciente.nome_completo?.toLowerCase().includes(pesquisa.toLowerCase())
   );
-
-  // =========================================
-  // CONSULTAS DO PACIENTE SELECIONADO
-  // =========================================
 
   const consultasDoPaciente = pacienteHistorico
     ? consultas.filter(
@@ -286,26 +233,83 @@ export default function Pacientes() {
       return dataB.localeCompare(dataA);
     })[0];
 
-  // =========================================
-  // FORMATAR DATA
-  // =========================================
+  const pagamentosDoPaciente = pacienteHistorico
+    ? pagamentos.filter(
+        (pagamento) =>
+          Number(pagamento.id_paciente) === Number(pacienteHistorico.id_paciente)
+      )
+    : [];
+
+  const pagamentosPagos = pagamentosDoPaciente.filter(
+    (pagamento) => pagamento.status_pagamento === "Pago"
+  );
+
+  const pagamentosPendentes = pagamentosDoPaciente.filter(
+    (pagamento) => pagamento.status_pagamento === "Pendente"
+  );
+
+  const totalRecebidoPaciente = pagamentosPagos.reduce(
+    (total, pagamento) => total + Number(pagamento.valor || 0),
+    0
+  );
+
+  const totalPendentePaciente = pagamentosPendentes.reduce(
+    (total, pagamento) => total + Number(pagamento.valor || 0),
+    0
+  );
+
+  const ultimoPagamento = [...pagamentosDoPaciente]
+    .sort((a, b) => {
+      const dataA = `${a.data_pagamento || ""}`;
+      const dataB = `${b.data_pagamento || ""}`;
+      return dataB.localeCompare(dataA);
+    })[0];
 
   function formatarData(data) {
     if (!data) return "-";
     return new Date(data).toLocaleDateString("pt-BR");
   }
 
-  // =========================================
-  // FORMATAR HORA
-  // =========================================
-
   function formatarHora(hora) {
     return hora?.slice(0, 5) || "-";
   }
 
-  // =========================================
-  // COR DO STATUS
-  // =========================================
+  function exportarPDFPacientes() {
+    const doc = new jsPDF();
+
+    doc.setFontSize(20);
+    doc.text("Clínica de Psicologia", 14, 20);
+
+    doc.setFontSize(11);
+    doc.text(
+      `Relatório de Pacientes - ${new Date().toLocaleDateString("pt-BR")}`,
+      14,
+      30
+    );
+
+    doc.text(`Total de pacientes: ${pacientes.length}`, 14, 45);
+
+    autoTable(doc, {
+      startY: 55,
+      head: [["ID", "Nome", "CPF", "Telefone", "Profissão"]],
+      body: pacientes.map((paciente) => [
+        paciente.id_paciente,
+        paciente.nome_completo || "-",
+        paciente.cpf || "-",
+        paciente.telefone || "-",
+        paciente.profissao || "-",
+      ]),
+    });
+
+    doc.save("pacientes-clinica.pdf");
+  }
+
+  function formatarValor(valor) {
+    return Number(valor || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  }
 
   function corStatus(status) {
     if (status === "Confirmado") return "bg-green-100 text-green-700";
@@ -316,9 +320,13 @@ export default function Pacientes() {
     return "bg-[#e8eadf] text-[#1d3557]";
   }
 
-  // =========================================
-  // TELA
-  // =========================================
+  function corPagamento(status) {
+    if (status === "Pago") return "bg-green-100 text-green-700";
+    if (status === "Pendente") return "bg-yellow-100 text-yellow-700";
+    if (status === "Cancelado") return "bg-red-100 text-red-700";
+
+    return "bg-[#e8eadf] text-[#1d3557]";
+  }
 
   return (
     <Protegido>
@@ -326,10 +334,6 @@ export default function Pacientes() {
         <Sidebar />
 
         <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
-          {/* =========================================
-              CABEÇALHO
-          ========================================= */}
-
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-8">
             <div>
               <p className="text-[#2b4c7e] font-semibold mb-2">
@@ -345,17 +349,22 @@ export default function Pacientes() {
               </p>
             </div>
 
-            <button
-              onClick={() => setMostrarFormulario(!mostrarFormulario)}
-              className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
-            >
-              + Novo Paciente
-            </button>
-          </div>
+            <div className="flex flex-col md:flex-row gap-3">
+              <button
+                onClick={exportarPDFPacientes}
+                className="bg-green-600 text-white px-6 py-3 rounded-2xl shadow hover:bg-green-700 transition"
+              >
+                Exportar PDF
+              </button>
 
-          {/* =========================================
-              HISTÓRICO DO PACIENTE
-          ========================================= */}
+              <button
+                onClick={() => setMostrarFormulario(!mostrarFormulario)}
+                className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl shadow hover:opacity-90 hover:scale-[1.02] active:scale-[0.98] transition"
+              >
+                + Novo Paciente
+              </button>
+            </div>
+          </div>
 
           {pacienteHistorico && (
             <motion.div
@@ -365,7 +374,9 @@ export default function Pacientes() {
             >
               <div className="bg-[#1d3557] p-6 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <p className="text-blue-100 text-sm">Prontuário do paciente</p>
+                  <p className="text-blue-100 text-sm">
+                    Prontuário do paciente
+                  </p>
 
                   <h2 className="text-2xl md:text-3xl font-bold mt-1">
                     {pacienteHistorico.nome_completo}
@@ -426,7 +437,12 @@ export default function Pacientes() {
                     }
                   />
 
-                  <HistoricoCard titulo="Status" valor="Ativo" destaque />
+                  <HistoricoCard
+                    titulo="Recebido"
+                    valor={formatarValor(totalRecebidoPaciente)}
+                    descricao="Pagamentos pagos"
+                    destaque
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -486,6 +502,38 @@ export default function Pacientes() {
                         Anamnese em desenvolvimento
                       </button>
                     </div>
+
+                    <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
+                      <h3 className="text-xl font-bold text-[#1d3557] mb-4">
+                        Resumo financeiro
+                      </h3>
+
+                      <div className="space-y-3 text-sm">
+                        <Info
+                          label="Total recebido"
+                          valor={formatarValor(totalRecebidoPaciente)}
+                        />
+
+                        <Info
+                          label="Pendente"
+                          valor={formatarValor(totalPendentePaciente)}
+                        />
+
+                        <Info
+                          label="Pagamentos"
+                          valor={pagamentosDoPaciente.length}
+                        />
+
+                        <Info
+                          label="Último pagamento"
+                          valor={
+                            ultimoPagamento
+                              ? formatarData(ultimoPagamento.data_pagamento)
+                              : "-"
+                          }
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="lg:col-span-2 bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
@@ -538,15 +586,51 @@ export default function Pacientes() {
                         </div>
                       )}
                     </div>
+
+                    <div className="mt-6 bg-white rounded-3xl p-5 border border-gray-100">
+                      <h3 className="text-xl font-bold text-[#1d3557] mb-4">
+                        Pagamentos do paciente
+                      </h3>
+
+                      <div className="space-y-3">
+                        {pagamentosDoPaciente.map((pagamento) => (
+                          <div
+                            key={pagamento.id_pagamento}
+                            className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-[#fbfaf7] rounded-2xl p-4 border border-gray-100"
+                          >
+                            <div>
+                              <p className="font-bold text-[#1d3557]">
+                                {formatarValor(pagamento.valor)}
+                              </p>
+
+                              <p className="text-sm text-gray-500 mt-1">
+                                {pagamento.forma_pagamento || "-"} •{" "}
+                                {formatarData(pagamento.data_pagamento)}
+                              </p>
+                            </div>
+
+                            <span
+                              className={`px-3 py-1 rounded-full text-sm font-medium w-fit ${corPagamento(
+                                pagamento.status_pagamento
+                              )}`}
+                            >
+                              {pagamento.status_pagamento || "Indefinido"}
+                            </span>
+                          </div>
+                        ))}
+
+                        {pagamentosDoPaciente.length === 0 && (
+                          <div className="p-6 text-center text-gray-500">
+                            Nenhum pagamento encontrado para este paciente.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </motion.div>
           )}
-
-          {/* =========================================
-              CARDS DE RESUMO
-          ========================================= */}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
             <ResumoCard titulo="Total de pacientes" valor={pacientes.length} />
@@ -558,10 +642,6 @@ export default function Pacientes() {
 
             <ResumoCard titulo="Status" valor="Base ativa" destaque />
           </div>
-
-          {/* =========================================
-              FORMULÁRIO
-          ========================================= */}
 
           {mostrarFormulario && (
             <motion.div
@@ -629,10 +709,6 @@ export default function Pacientes() {
             </motion.div>
           )}
 
-          {/* =========================================
-              PESQUISA
-          ========================================= */}
-
           <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
             <input
               type="text"
@@ -642,10 +718,6 @@ export default function Pacientes() {
               className="border border-gray-200 p-4 rounded-2xl w-full text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
             />
           </div>
-
-          {/* =========================================
-              LISTA DE PACIENTES
-          ========================================= */}
 
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
@@ -855,7 +927,11 @@ function HistoricoCard({ titulo, valor, descricao, destaque }) {
       <h3 className="text-2xl font-bold mt-2">{valor}</h3>
 
       {descricao && (
-        <p className={`text-xs mt-1 ${destaque ? "text-blue-100" : "text-gray-400"}`}>
+        <p
+          className={`text-xs mt-1 ${
+            destaque ? "text-blue-100" : "text-gray-400"
+          }`}
+        >
           {descricao}
         </p>
       )}
