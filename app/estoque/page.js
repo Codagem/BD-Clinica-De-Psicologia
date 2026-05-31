@@ -173,6 +173,38 @@ export default function Estoque() {
     carregarProdutos();
   }, []);
 
+
+// =========================================
+// EXCLUIR PRODUTO
+// =========================================
+
+  async function excluirProduto(id) {
+  const confirmar = confirm("Deseja realmente excluir este produto?");
+  if (!confirmar) return;
+
+  try {
+    const resposta = await fetch("/api/estoque", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id }),
+    });
+
+    const resultado = await resposta.json();
+
+    if (resultado.erro) {
+      toast.error(resultado.erro);
+      return;
+    }
+
+    toast.success("Produto excluído com sucesso!");
+    carregarProdutos();
+  } catch (error) {
+    toast.error("Erro ao excluir produto.");
+  }
+}
+
   // =========================================
   // VERIFICAR ESTOQUE BAIXO
   // =========================================

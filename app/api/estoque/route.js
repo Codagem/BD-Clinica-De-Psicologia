@@ -108,3 +108,33 @@ export async function PUT(req) {
     });
   }
 }
+
+export async function DELETE(req) {
+  try {
+    const body = await req.json();
+
+    const { id } = body;
+
+    if (!id) {
+      return Response.json({
+        erro: "ID do produto é obrigatório.",
+      });
+    }
+
+    await pool.query(
+      `
+      DELETE FROM estoque
+      WHERE id_produto = $1
+      `,
+      [Number(id)]
+    );
+
+    return Response.json({
+      mensagem: "Produto excluído",
+    });
+  } catch (error) {
+    return Response.json({
+      erro: error.message,
+    });
+  }
+}
