@@ -33,18 +33,10 @@ export default function Sidebar() {
   const [aberto, setAberto] = useState(false);
   const [tipoUsuario, setTipoUsuario] = useState("");
 
-  // =========================================
-  // CARREGAR TIPO DE USUÁRIO
-  // =========================================
-
   useEffect(() => {
     const tipo = localStorage.getItem("tipo_usuario");
     setTipoUsuario(tipo || "admin");
   }, []);
-
-  // =========================================
-  // SAIR DO SISTEMA
-  // =========================================
 
   function sair() {
     localStorage.removeItem("logado");
@@ -54,17 +46,9 @@ export default function Sidebar() {
     router.push("/login");
   }
 
-  // =========================================
-  // FECHAR MENU MOBILE
-  // =========================================
-
   function fecharMenu() {
     setAberto(false);
   }
-
-  // =========================================
-  // LINKS DO ADMIN
-  // =========================================
 
   const linksAdmin = [
     { href: "/", label: "Início", icon: LayoutDashboard },
@@ -74,10 +58,6 @@ export default function Sidebar() {
     { href: "/estoque", label: "Estoque", icon: Package },
   ];
 
-  // =========================================
-  // LINKS DO PACIENTE
-  // =========================================
-
   const linksPaciente = [
     { href: "/cliente", label: "Minha área", icon: User },
     { href: "/cliente", label: "Minhas consultas", icon: CalendarDays },
@@ -86,18 +66,17 @@ export default function Sidebar() {
 
   const links = tipoUsuario === "paciente" ? linksPaciente : linksAdmin;
 
-  // =========================================
-  // VERIFICAR LINK ATIVO
-  // =========================================
-
   function estaAtivo(href) {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   }
 
-  // =========================================
-  // TELA
-  // =========================================
+  function abrirSuporte() {
+    window.open(
+      "https://wa.me/5581999999999?text=Olá,%20preciso%20de%20suporte%20no%20sistema%20da%20clínica.",
+      "_blank"
+    );
+  }
 
   return (
     <>
@@ -231,7 +210,10 @@ export default function Sidebar() {
                 </div>
               </div>
 
-              <button className="w-full mt-4 border border-[#1d3557]/15 text-[#1d3557] py-3 rounded-2xl hover:bg-[#f3f1eb] transition flex items-center justify-center gap-2">
+              <button
+                onClick={abrirSuporte}
+                className="w-full mt-4 border border-[#1d3557]/15 text-[#1d3557] py-3 rounded-2xl hover:bg-[#f3f1eb] transition flex items-center justify-center gap-2"
+              >
                 <LifeBuoy size={17} />
                 Suporte
               </button>
