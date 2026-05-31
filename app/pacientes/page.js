@@ -291,11 +291,10 @@ export default function Pacientes() {
 
     autoTable(doc, {
       startY: 55,
-      head: [["ID", "Nome", "CPF", "Telefone", "Profissão"]],
+      head: [["ID", "Nome", "Telefone", "Profissão"]],
       body: pacientes.map((paciente) => [
         paciente.id_paciente,
         paciente.nome_completo || "-",
-        paciente.cpf || "-",
         paciente.telefone || "-",
         paciente.profissao || "-",
       ]),
@@ -495,12 +494,7 @@ export default function Pacientes() {
                         />
                       </div>
 
-                      <button
-                        disabled
-                        className="w-full mt-5 bg-gray-300 text-gray-500 py-3 rounded-2xl font-semibold cursor-not-allowed"
-                      >
-                        Anamnese em desenvolvimento
-                      </button>
+                    
                     </div>
 
                     <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">

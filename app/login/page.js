@@ -147,12 +147,7 @@ export default function Login() {
                 className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white outline-none focus:border-[#2b4c7e]"
               />
 
-              <div className="flex justify-between items-center text-sm text-gray-500">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" />
-                  Lembrar de mim
-                </label>
-
+              <div className="flex justify-end items-center text-sm text-gray-500">
                 <button
                   type="button"
                   onClick={abrirSuporte}

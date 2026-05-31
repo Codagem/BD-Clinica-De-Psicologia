@@ -45,13 +45,14 @@ export default function Dashboard() {
   const [consultas, setConsultas] = useState([]);
 
   const [dados, setDados] = useState({
-    pacientes: 0,
-    consultas: 0,
-    receitas: 0,
-    despesas: 0,
-    lucro: 0,
-    estoqueBaixo: 0,
-  });
+  pacientes: 0,
+  consultas: 0,
+  receitas: 0,
+  despesas: 0,
+  lucro: 0,
+  estoqueBaixo: 0,
+  consultasSemana: [],
+});
 
   // =========================================
   // CARREGAR DASHBOARD
@@ -184,15 +185,7 @@ export default function Dashboard() {
   // GRÁFICO SEMANAL SIMPLES
   // =========================================
 
-  const dadosGrafico = [
-    { dia: "Seg", consultas: 8 },
-    { dia: "Ter", consultas: 12 },
-    { dia: "Qua", consultas: 6 },
-    { dia: "Qui", consultas: 15 },
-    { dia: "Sex", consultas: 10 },
-    { dia: "Sáb", consultas: 4 },
-    { dia: "Dom", consultas: 2 },
-  ];
+  const dadosGrafico = dados.consultasSemana || [];
 
   // =========================================
   // CORES DOS GRÁFICOS
@@ -221,7 +214,7 @@ export default function Dashboard() {
               </p>
 
               <h1 className="text-3xl md:text-5xl font-bold text-[#1d3557] tracking-tight">
-                Olá, Dra. Juliana 👋
+                Olá, Administrador 👋
               </h1>
 
               <p className="text-gray-500 mt-3 max-w-xl">
@@ -238,7 +231,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm text-gray-500">Perfil ativo</p>
                 <p className="font-semibold text-[#1d3557]">
-                  Dra. Juliana Mendes
+                  Administrador
                 </p>
               </div>
             </div>

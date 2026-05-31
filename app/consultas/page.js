@@ -308,16 +308,16 @@ export default function Consultas() {
     (c) => c.status_consulta === "Realizado"
   ).length;
 
-  const consultasHoje = consultas.filter((consulta) => {
-    const hoje = new Date().toLocaleDateString("pt-BR");
-    return formatarData(consulta.data_consulta) === hoje;
-  });
+  const consultasHoje = consultas.filter(
+    (consulta) =>
+      formatarDataInput(consulta.data_consulta) === dataHojeInput()
+  );
 
-  const online = consultasFiltradas.filter(
+  const online = consultasDoDiaAgenda.filter(
     (consulta) => consulta.tipo_atendimento === "Online"
   ).length;
 
-  const presenciais = consultasFiltradas.filter(
+  const presenciais = consultasDoDiaAgenda.filter(
     (consulta) => consulta.tipo_atendimento === "Presencial"
   ).length;
     return (
@@ -706,7 +706,7 @@ export default function Consultas() {
               </p>
             </div>
 
-            <div className="hidden md:block overflow-x-auto">
+            <div className="overflow-x-auto overflow-x-auto">
               <table className="w-full min-w-[1100px]">
                 <thead className="bg-[#f3f1eb] text-[#1d3557]">
                   <tr>
