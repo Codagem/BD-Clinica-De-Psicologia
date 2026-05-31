@@ -366,7 +366,7 @@ export default function Cliente() {
             </p>
           </div>
 
-          <div className="hidden md:block overflow-x-auto">
+          <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px]">
               <thead className="bg-[#f3f1eb] text-[#1d3557]">
                 <tr>
