@@ -129,7 +129,8 @@ Retorna a quantidade total de produtos presentes no estoque.
 </ul>
 
 <p align="center">
-<img width="600" alt="Captura de tela 2026-05-26 225856" src="https://github.com/user-attachments/assets/156ac43c-1742-4290-8ad1-ad2248809236" />
+<img width="650" alt="Captura de tela 2026-06-01 223740" src="https://github.com/user-attachments/assets/2650fb1d-941f-4175-94aa-e9f888434e05" />
+
 </p>
 
 <hr>
@@ -202,7 +203,8 @@ Resume receitas, despesas e lucro líquido da clínica.
 </ul>
 
 <p align="center">
-<img width="600" alt="Captura de tela 2026-05-26 230945" src="https://github.com/user-attachments/assets/1a1e82f4-bc38-4b96-a6b0-f5e6aad7adbf" />
+<img width="400" alt="Captura de tela 2026-06-01 224430" src="https://github.com/user-attachments/assets/d5dc8313-3dce-4c41-a3e9-2d6a2313f44e" />
+
 </p>
 
 <hr>
@@ -225,7 +227,9 @@ Com elas, a aplicação pode executar chamadas simples para registrar informaç�
 </ul>
 
 <p align="center">
-<img width="700" alt="Captura de tela 2026-05-26 232006" src="https://github.com/user-attachments/assets/8cc73882-2a1b-4560-a582-a8a237181e1e" />
+<img width="400" alt="Captura de tela 2026-06-01 225435" src="https://github.com/user-attachments/assets/41f39e31-76fa-42d0-989a-59b3ecba5550" />
+
+<img width="500" alt="Captura de tela 2026-06-01 230032" src="https://github.com/user-attachments/assets/e943c663-e68b-42bf-8add-b7906f6bc7c5" />
 </p>
 
 <hr>
