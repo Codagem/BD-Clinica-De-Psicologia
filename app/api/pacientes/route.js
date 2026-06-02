@@ -20,21 +20,22 @@ export async function POST(req) {
   try {
     const body = await req.json();
 
-    const { nome_completo, cpf, telefone, profissao } = body;
+    const { nome_completo, data_nascimento, cpf, telefone, profissao } = body;
 
     const pacienteCriado = await pool.query(
       `
       INSERT INTO pacientes
       (
         nome_completo,
+        data_nascimento,
         cpf,
         telefone,
         profissao
       )
-      VALUES ($1, $2, $3, $4)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING id_paciente
       `,
-      [nome_completo, cpf, telefone, profissao]
+      [nome_completo, data_nascimento, cpf, telefone, profissao]
     );
 
     const idPaciente = pacienteCriado.rows[0].id_paciente;
@@ -69,19 +70,20 @@ export async function PUT(req) {
   try {
     const body = await req.json();
 
-    const { id, nome_completo, cpf, telefone, profissao } = body;
+    const { id, nome_completo, data_nascimento, cpf, telefone, profissao } = body;
 
     await pool.query(
       `
       UPDATE pacientes
       SET
         nome_completo = $1,
-        cpf = $2,
-        telefone = $3,
-        profissao = $4
-      WHERE id_paciente = $5
+        data_nascimento = $2,
+        cpf = $3,
+        telefone = $4,
+        profissao = $5
+      WHERE id_paciente = $6
       `,
-      [nome_completo, cpf, telefone, profissao, Number(id)]
+      [nome_completo, data_nascimento, cpf, telefone, profissao, Number(id)]
     );
 
     return Response.json({ mensagem: "Paciente atualizado" });

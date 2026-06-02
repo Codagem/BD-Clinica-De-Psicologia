@@ -52,6 +52,7 @@ export default function Pacientes() {
   const [cpf, setCpf] = useState("");
   const [telefone, setTelefone] = useState("");
   const [profissao, setProfissao] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
 
   async function carregarPacientes() {
     const resposta = await fetch("/api/pacientes");
@@ -98,6 +99,7 @@ export default function Pacientes() {
           body: JSON.stringify({
             id: editandoId,
             nome_completo: nome,
+            data_nascimento: dataNascimento,
             cpf,
             telefone,
             profissao,
@@ -111,6 +113,7 @@ export default function Pacientes() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             nome_completo: nome,
+            data_nascimento: dataNascimento,
             cpf,
             telefone,
             profissao,
@@ -147,6 +150,7 @@ export default function Pacientes() {
 
   function editarPaciente(paciente) {
     setNome(paciente.nome_completo || "");
+    setDataNascimento(paciente.data_nascimento?.slice(0, 10) || "");
     setCpf(paciente.cpf || "");
     setTelefone(paciente.telefone || "");
     setProfissao(paciente.profissao || "");
@@ -178,6 +182,7 @@ export default function Pacientes() {
 
   function limparFormulario() {
     setNome("");
+    setDataNascimento("");
     setCpf("");
     setTelefone("");
     setProfissao("");
@@ -657,6 +662,14 @@ export default function Pacientes() {
                 />
 
                 <input
+                  type="date"
+                  placeholder="Data de nascimento"
+                  value={dataNascimento}
+                  className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
+                  onChange={(e) => setDataNascimento(e.target.value)}
+                />
+
+                <input
                   type="text"
                   placeholder="CPF"
                   value={cpf}
@@ -730,6 +743,8 @@ export default function Pacientes() {
                   <tr>
                     <th className="text-left p-4">ID</th>
                     <th className="text-left p-4">Paciente</th>
+                    <th className="text-left p-4">Idade</th>
+                    <th className="text-left p-4">Nascimento</th>
                     <th className="text-left p-4">CPF</th>
                     <th className="text-left p-4">Telefone</th>
                     <th className="text-left p-4">Profissão</th>
@@ -761,6 +776,14 @@ export default function Pacientes() {
                             </p>
                           </div>
                         </div>
+                      </td>
+
+                      <td className="p-4">
+                        {paciente.idade ? `${paciente.idade} anos` : "-"}
+                      </td>
+
+                      <td className="p-4">
+                        {formatarData(paciente.data_nascimento)}
                       </td>
 
                       <td className="p-4">{paciente.cpf}</td>
