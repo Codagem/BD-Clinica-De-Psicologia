@@ -43,6 +43,7 @@ export default function Pacientes() {
   const [pacientes, setPacientes] = useState([]);
   const [consultas, setConsultas] = useState([]);
   const [pagamentos, setPagamentos] = useState([]);
+  const [anamneses, setAnamneses] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editandoId, setEditandoId] = useState(null);
   const [pesquisa, setPesquisa] = useState("");
@@ -89,6 +90,18 @@ export default function Pacientes() {
       console.log(dados);
     }
   }
+
+  async function carregarAnamneses() {
+  const resposta = await fetch("/api/relatorio-anamnese");
+  const dados = await resposta.json();
+
+  if (Array.isArray(dados)) {
+    setAnamneses(dados);
+  } else {
+    setAnamneses([]);
+    console.log(dados);
+  }
+}
 
   async function cadastrarPaciente() {
     try {
@@ -194,11 +207,19 @@ export default function Pacientes() {
     carregarPacientes();
     carregarConsultas();
     carregarFinanceiro();
+    carregarAnamneses();
   }, []);
 
   const pacientesFiltrados = pacientes.filter((paciente) =>
     paciente.nome_completo?.toLowerCase().includes(pesquisa.toLowerCase())
   );
+
+  const anamneseDoPaciente = pacienteHistorico
+  ? anamneses.find(
+      (anamnese) =>
+        Number(anamnese.id_paciente) === Number(pacienteHistorico.id_paciente)
+    )
+  : null;
 
   const consultasDoPaciente = pacienteHistorico
     ? consultas.filter(
@@ -454,7 +475,7 @@ export default function Pacientes() {
                     <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
                       <h3 className="text-xl font-bold text-[#1d3557] mb-4">
                         Dados do paciente
-                      </h3>
+                      </h3>     
 
                       <div className="space-y-3 text-sm">
                         <Info label="CPF" valor={pacienteHistorico.cpf || "-"} />
@@ -465,6 +486,29 @@ export default function Pacientes() {
                         <Info
                           label="Profissão"
                           valor={pacienteHistorico.profissao || "-"}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-[#fbfaf7] rounded-3xl p-5 border border-gray-100">
+                      <h3 className="text-xl font-bold text-[#1d3557] mb-4">
+                        Resumo da anamnese
+                      </h3>
+
+                      <div className="space-y-3 text-sm">
+                        <Info
+                          label="Motivo"
+                          valor={anamneseDoPaciente?.motivo_consulta || "-"}
+                        />
+
+                        <Info
+                          label="Tempo do problema"
+                          valor={anamneseDoPaciente?.tempo_problema || "-"}
+                        />
+
+                        <Info
+                          label="Ansiedade"
+                          valor={anamneseDoPaciente?.ansiedade || "-"}
                         />
                       </div>
                     </div>
