@@ -229,7 +229,7 @@ Com elas, a aplicação pode executar chamadas simples para registrar informaç�
 <p align="center">
 <img width="400" alt="Captura de tela 2026-06-01 225435" src="https://github.com/user-attachments/assets/41f39e31-76fa-42d0-989a-59b3ecba5550" />
 
-<img width="400" alt="Captura de tela 2026-06-01 230032" src="https://github.com/user-attachments/assets/e943c663-e68b-42bf-8add-b7906f6bc7c5" />
+<img width="460" alt="Captura de tela 2026-06-01 230032" src="https://github.com/user-attachments/assets/e943c663-e68b-42bf-8add-b7906f6bc7c5" />
 </p>
 
 <hr>
