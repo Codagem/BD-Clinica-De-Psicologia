@@ -6,14 +6,9 @@ function limparCPF(cpf) {
 }
 
 function validarCPF(cpf) {
-  if (!cpf || cpf.length !== 11) {
-    return false;
-  }
+  if (!cpf || cpf.length !== 11) return false;
 
-  // Impede CPFs formados pelo mesmo número repetido
-  if (/^(\d)\1{10}$/.test(cpf)) {
-    return false;
-  }
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
 
   let soma = 0;
 
@@ -49,7 +44,6 @@ function normalizarData(data) {
 
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(valor)) {
     const [dia, mes, ano] = valor.split("/");
-
     return `${ano}-${mes}-${dia}`;
   }
 
@@ -57,9 +51,7 @@ function normalizarData(data) {
 }
 
 function validarData(data) {
-  if (!data) {
-    return false;
-  }
+  if (!data) return false;
 
   const dataObj = new Date(`${data}T00:00:00`);
 
@@ -82,12 +74,8 @@ export async function POST(req) {
 
     if (!body || typeof body !== "object") {
       return Response.json(
-        {
-          erro: "Dados de login inválidos.",
-        },
-        {
-          status: 400,
-        }
+        { erro: "Dados de login inválidos." },
+        { status: 400 }
       );
     }
 
@@ -99,9 +87,7 @@ export async function POST(req) {
         {
           erro: "CPF e data de nascimento são obrigatórios.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
@@ -110,9 +96,7 @@ export async function POST(req) {
         {
           erro: "CPF ou data de nascimento inválidos.",
         },
-        {
-          status: 401,
-        }
+        { status: 401 }
       );
     }
 
@@ -121,18 +105,16 @@ export async function POST(req) {
         {
           erro: "CPF ou data de nascimento inválidos.",
         },
-        {
-          status: 401,
-        }
+        { status: 401 }
       );
     }
 
-    const result = await pool.query(
+    const resultado = await pool.query(
       `
       SELECT
-        id_paciente,
-        nome_completo
-      FROM public.pacientes
+        id_psicologo,
+        nome
+      FROM public.psicologos
       WHERE REGEXP_REPLACE(cpf, '[^0-9]', '', 'g') = $1
       AND data_nascimento = $2::date
       LIMIT 1
@@ -140,34 +122,30 @@ export async function POST(req) {
       [cpf, dataNascimento]
     );
 
-    if (result.rows.length === 0) {
+    if (resultado.rows.length === 0) {
       return Response.json(
         {
           erro: "CPF ou data de nascimento inválidos.",
         },
-        {
-          status: 401,
-        }
+        { status: 401 }
       );
     }
 
-    const paciente = result.rows[0];
+    const psicologo = resultado.rows[0];
 
     const token = await criarSessao({
-      tipo_usuario: "paciente",
-      id_paciente: paciente.id_paciente,
+      tipo_usuario: "psicologo",
+      id_psicologo: psicologo.id_psicologo,
     });
 
     const secureCookie =
-      process.env.NODE_ENV === "production"
-        ? " Secure;"
-        : "";
+      process.env.NODE_ENV === "production" ? " Secure;" : "";
 
     return Response.json(
       {
         mensagem: "Login realizado com sucesso.",
-        id_paciente: paciente.id_paciente,
-        nome: paciente.nome_completo,
+        id_psicologo: psicologo.id_psicologo,
+        nome: psicologo.nome,
       },
       {
         status: 200,
@@ -183,18 +161,13 @@ export async function POST(req) {
       }
     );
   } catch (error) {
-    console.error(
-      "Erro no login do paciente:",
-      error
-    );
+    console.error("Erro no login do psicólogo:", error);
 
     return Response.json(
       {
         erro: "Erro ao realizar login.",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

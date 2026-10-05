@@ -288,36 +288,36 @@ export default function Consultas() {
     "18:00",
   ];
 
-  const consultasDoDiaAgenda = consultasFiltradas
-    .filter((consulta) => formatarDataInput(consulta.data_consulta) === dataAgenda)
+  const consultasDoDiaAgenda = (consultasFiltradas || [])
+  .filter((consulta) => formatarDataInput(consulta.data_consulta) === dataAgenda)
     .sort((a, b) =>
       String(a.horario || "").localeCompare(String(b.horario || ""))
     );
 
   const totalConsultas = consultas.length;
 
-  const agendadas = consultas.filter(
+  const agendadas = (consultas || []).filter(
     (c) => c.status_consulta === "Agendado"
   ).length;
 
-  const confirmadas = consultas.filter(
+  const confirmadas = (consultas || []).filter(
     (c) => c.status_consulta === "Confirmado"
   ).length;
 
-  const realizadas = consultas.filter(
+  const realizadas = (consultas || []).filter(
     (c) => c.status_consulta === "Realizado"
   ).length;
 
-  const consultasHoje = consultas.filter(
+  const consultasHoje = (consultas || []).filter(
     (consulta) =>
       formatarDataInput(consulta.data_consulta) === dataHojeInput()
   );
 
-  const online = consultasDoDiaAgenda.filter(
+  const online = (consultasDoDiaAgenda || []).filter(
     (consulta) => consulta.tipo_atendimento === "Online"
   ).length;
 
-  const presenciais = consultasDoDiaAgenda.filter(
+  const presenciais = (consultasDoDiaAgenda || []).filter(
     (consulta) => consulta.tipo_atendimento === "Presencial"
   ).length;
     return (
