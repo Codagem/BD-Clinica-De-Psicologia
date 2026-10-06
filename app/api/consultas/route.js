@@ -2,6 +2,12 @@ import pool from "@/lib/db";
 import { verificarSessao } from "@/lib/sessao";
 import { registrarAuditoria } from "@/lib/auditoria";
 
+const STATUS_PADRAO = "Agendada";
+
+/* =========================================================
+   OBTER SESSÃO
+   ========================================================= */
+
 async function obterSessao(req) {
   const cookie = req.headers.get("cookie") || "";
 
@@ -13,33 +19,120 @@ async function obterSessao(req) {
     ? sessaoCookie.trim().substring("sessao=".length)
     : null;
 
+  if (!token) {
+    return null;
+  }
+
   return await verificarSessao(token);
 }
 
-function respostaNaoAutorizado(
-  mensagem = "Acesso não autorizado."
-) {
-  return Response.json(
-    {
-      erro: mensagem,
-    },
-    {
-      status: 403,
-    }
+/* =========================================================
+   RESPOSTAS PADRÃO
+   ========================================================= */
+
+function respostaNaoAutenticado(mensagem = "Sessão inválida ou expirada.") {
+  return Response.json({ erro: mensagem }, { status: 401 });
+}
+
+function respostaNaoAutorizado(mensagem = "Acesso não autorizado.") {
+  return Response.json({ erro: mensagem }, { status: 403 });
+}
+
+function respostaDadosInvalidos(mensagem = "Dados inválidos.") {
+  return Response.json({ erro: mensagem }, { status: 400 });
+}
+
+function respostaNaoEncontrado(mensagem = "Registro não encontrado.") {
+  return Response.json({ erro: mensagem }, { status: 404 });
+}
+
+function respostaErroInterno(mensagem = "Erro interno do servidor.") {
+  return Response.json({ erro: mensagem }, { status: 500 });
+}
+
+/* =========================================================
+   UTILITÁRIOS
+   ========================================================= */
+
+function converterIdPositivo(valor) {
+  const numero = Number(valor);
+
+  return Number.isInteger(numero) && numero > 0 ? numero : null;
+}
+
+// Lê o corpo sem estourar 500 quando o JSON é inválido
+async function lerBody(req) {
+  try {
+    const body = await req.json();
+
+    return body && typeof body === "object" && !Array.isArray(body)
+      ? body
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function dataValida(valor) {
+  if (typeof valor !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    return false;
+  }
+
+  const data = new Date(`${valor}T00:00:00Z`);
+
+  return (
+    !Number.isNaN(data.getTime()) &&
+    data.toISOString().slice(0, 10) === valor
   );
 }
 
-function respostaDadosInvalidos(
-  mensagem = "Dados inválidos."
-) {
-  return Response.json(
-    {
-      erro: mensagem,
-    },
-    {
-      status: 400,
-    }
+function horarioValido(valor) {
+  return (
+    typeof valor === "string" &&
+    /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(valor)
   );
+}
+
+function textoOpcional(valor) {
+  if (valor === null || valor === undefined) {
+    return null;
+  }
+
+  const texto = String(valor).trim();
+
+  return texto === "" ? null : texto;
+}
+
+function idUsuarioDaSessao(sessao) {
+  return sessao.id_usuario || sessao.id_psicologo || null;
+}
+
+// Se a auditoria falhar depois da operação já feita, não devolve 500
+// (o cliente acharia que a operação falhou). O erro fica no log.
+async function auditar(dados) {
+  try {
+    await registrarAuditoria(dados);
+  } catch (error) {
+    console.error("Falha ao registrar auditoria:", error);
+  }
+}
+
+// Verifica paciente e psicólogo em uma única consulta
+async function verificarReferencias(idPaciente, idPsicologo) {
+  const { rows } = await pool.query(
+    `
+    SELECT
+      EXISTS (
+        SELECT 1 FROM pacientes WHERE id_paciente = $1
+      ) AS paciente,
+      EXISTS (
+        SELECT 1 FROM psicologos WHERE id_psicologo = $2
+      ) AS psicologo
+    `,
+    [idPaciente, idPsicologo]
+  );
+
+  return rows[0];
 }
 
 /* =========================================================
@@ -51,43 +144,23 @@ export async function GET(req) {
     const sessao = await obterSessao(req);
 
     if (!sessao) {
-      return respostaNaoAutorizado();
+      return respostaNaoAutenticado();
     }
 
-    if (
-      sessao.tipo_usuario !== "admin" &&
-      sessao.tipo_usuario !== "psicologo" &&
-      sessao.tipo_usuario !== "estagiario"
-    ) {
-      return respostaNaoAutorizado(
-        "Você não possui permissão para acessar as consultas."
-      );
-    }
-
-    /* =====================================================
-       ESTAGIÁRIO
-       -----------------------------------------------------
-       Somente consultas dos pacientes vinculados a ele.
-       ===================================================== */
+    /*
+      ADMIN: todas as consultas.
+      PSICÓLOGO: somente as próprias.
+      ESTAGIÁRIO: somente de pacientes com vínculo ativo.
+    */
 
     if (sessao.tipo_usuario === "estagiario") {
-      if (!sessao.id_estagiario) {
-        return respostaNaoAutorizado(
-          "Estagiário não identificado."
-        );
+      const idEstagiario = converterIdPositivo(sessao.id_estagiario);
+
+      if (!idEstagiario) {
+        return respostaNaoAutorizado("Estagiário não identificado.");
       }
 
-      const idEstagiario = Number(sessao.id_estagiario);
-
-      if (
-        !Number.isInteger(idEstagiario) ||
-        idEstagiario <= 0
-      ) {
-        return respostaNaoAutorizado(
-          "Estagiário inválido."
-        );
-      }
-
+      // EXISTS evita linhas duplicadas se houver mais de um vínculo ativo
       const result = await pool.query(
         `
         SELECT
@@ -103,11 +176,13 @@ export async function GET(req) {
         INNER JOIN psicologos ps
           ON ps.id_psicologo = c.id_psicologo
 
-        INNER JOIN estagiarios_pacientes ep
-          ON ep.id_paciente = c.id_paciente
-
-        WHERE ep.id_estagiario = $1
-          AND ep.status = 'Ativo'
+        WHERE EXISTS (
+          SELECT 1
+          FROM estagiarios_pacientes ep
+          WHERE ep.id_paciente = c.id_paciente
+            AND ep.id_estagiario = $1
+            AND ep.status = 'Ativo'
+        )
 
         ORDER BY
           c.data_consulta DESC,
@@ -119,28 +194,11 @@ export async function GET(req) {
       return Response.json(result.rows);
     }
 
-    /* =====================================================
-       PSICÓLOGO
-       -----------------------------------------------------
-       Somente consultas do próprio psicólogo.
-       ===================================================== */
-
     if (sessao.tipo_usuario === "psicologo") {
-      if (!sessao.id_psicologo) {
-        return respostaNaoAutorizado(
-          "Psicólogo não identificado."
-        );
-      }
+      const idPsicologo = converterIdPositivo(sessao.id_psicologo);
 
-      const idPsicologo = Number(sessao.id_psicologo);
-
-      if (
-        !Number.isInteger(idPsicologo) ||
-        idPsicologo <= 0
-      ) {
-        return respostaNaoAutorizado(
-          "Psicólogo inválido."
-        );
+      if (!idPsicologo) {
+        return respostaNaoAutorizado("Psicólogo não identificado.");
       }
 
       const result = await pool.query(
@@ -170,53 +228,44 @@ export async function GET(req) {
       return Response.json(result.rows);
     }
 
-    /* =====================================================
-       ADMINISTRADOR
-       -----------------------------------------------------
-       Administrador visualiza todas as consultas.
-       ===================================================== */
+    if (sessao.tipo_usuario === "admin") {
+      const result = await pool.query(`
+        SELECT
+          c.*,
+          p.nome_completo AS nome_paciente,
+          ps.nome AS nome_psicologo
 
-    const result = await pool.query(`
-      SELECT
-        c.*,
-        p.nome_completo AS nome_paciente,
-        ps.nome AS nome_psicologo
+        FROM consultas c
 
-      FROM consultas c
+        INNER JOIN pacientes p
+          ON p.id_paciente = c.id_paciente
 
-      INNER JOIN pacientes p
-        ON p.id_paciente = c.id_paciente
+        INNER JOIN psicologos ps
+          ON ps.id_psicologo = c.id_psicologo
 
-      INNER JOIN psicologos ps
-        ON ps.id_psicologo = c.id_psicologo
+        ORDER BY
+          c.data_consulta DESC,
+          c.horario DESC
+      `);
 
-      ORDER BY
-        c.data_consulta DESC,
-        c.horario DESC
-    `);
+      return Response.json(result.rows);
+    }
 
-    return Response.json(result.rows);
-
+    return respostaNaoAutorizado(
+      "Você não possui permissão para acessar as consultas."
+    );
   } catch (error) {
-    console.error(
-      "Erro ao carregar consultas:",
-      error
-    );
+    console.error("Erro ao carregar consultas:", error);
 
-    return Response.json(
-      {
-        erro: "Erro ao carregar consultas.",
-      },
-      {
-        status: 500,
-      }
-    );
+    return respostaErroInterno("Erro ao carregar consultas.");
   }
 }
 
 /* =========================================================
    POST — CRIAR CONSULTA
-   Admin e psicólogo.
+
+   Permissões: administrador e psicólogo.
+   O psicólogo somente pode criar consulta para ele mesmo.
    ========================================================= */
 
 export async function POST(req) {
@@ -224,7 +273,7 @@ export async function POST(req) {
     const sessao = await obterSessao(req);
 
     if (!sessao) {
-      return respostaNaoAutorizado();
+      return respostaNaoAutenticado();
     }
 
     if (
@@ -236,42 +285,34 @@ export async function POST(req) {
       );
     }
 
-    const body = await req.json();
+    const body = await lerBody(req);
 
-    if (!body || typeof body !== "object") {
-      return respostaDadosInvalidos();
+    if (!body) {
+      return respostaDadosInvalidos("Corpo da requisição inválido.");
     }
 
-    const {
-      id_paciente,
-      id_psicologo,
-      data_consulta,
-      horario,
-      tipo_atendimento,
-      status_consulta,
-      observacoes,
-    } = body;
+    const idPaciente = converterIdPositivo(body.id_paciente);
+    const idPsicologo = converterIdPositivo(body.id_psicologo);
 
-    const idPaciente = Number(id_paciente);
-    const idPsicologo = Number(id_psicologo);
-
-    if (
-      !Number.isInteger(idPaciente) ||
-      idPaciente <= 0 ||
-      !Number.isInteger(idPsicologo) ||
-      idPsicologo <= 0 ||
-      !data_consulta ||
-      !horario
-    ) {
+    if (!idPaciente || !idPsicologo) {
       return respostaDadosInvalidos(
-        "Paciente, psicólogo, data e horário são obrigatórios."
+        "Paciente e psicólogo são obrigatórios."
       );
     }
 
-    /* =====================================================
-       PSICÓLOGO SÓ PODE CRIAR CONSULTA PARA SI MESMO
-       ===================================================== */
+    if (!dataValida(body.data_consulta)) {
+      return respostaDadosInvalidos(
+        "Data inválida. Use o formato AAAA-MM-DD."
+      );
+    }
 
+    if (!horarioValido(body.horario)) {
+      return respostaDadosInvalidos(
+        "Horário inválido. Use o formato HH:MM."
+      );
+    }
+
+    // Psicólogo só pode criar consulta para si mesmo
     if (
       sessao.tipo_usuario === "psicologo" &&
       Number(sessao.id_psicologo) !== idPsicologo
@@ -281,57 +322,15 @@ export async function POST(req) {
       );
     }
 
-    /* =====================================================
-       VERIFICAR PACIENTE
-       ===================================================== */
+    const referencias = await verificarReferencias(idPaciente, idPsicologo);
 
-    const paciente = await pool.query(
-      `
-      SELECT id_paciente
-      FROM pacientes
-      WHERE id_paciente = $1
-      `,
-      [idPaciente]
-    );
-
-    if (paciente.rowCount === 0) {
-      return Response.json(
-        {
-          erro: "Paciente não encontrado.",
-        },
-        {
-          status: 404,
-        }
-      );
+    if (!referencias.paciente) {
+      return respostaNaoEncontrado("Paciente não encontrado.");
     }
 
-    /* =====================================================
-       VERIFICAR PSICÓLOGO
-       ===================================================== */
-
-    const psicologo = await pool.query(
-      `
-      SELECT id_psicologo
-      FROM psicologos
-      WHERE id_psicologo = $1
-      `,
-      [idPsicologo]
-    );
-
-    if (psicologo.rowCount === 0) {
-      return Response.json(
-        {
-          erro: "Psicólogo não encontrado.",
-        },
-        {
-          status: 404,
-        }
-      );
+    if (!referencias.psicologo) {
+      return respostaNaoEncontrado("Psicólogo não encontrado.");
     }
-
-    /* =====================================================
-       INSERIR CONSULTA
-       ===================================================== */
 
     const result = await pool.query(
       `
@@ -350,57 +349,37 @@ export async function POST(req) {
       [
         idPaciente,
         idPsicologo,
-        data_consulta,
-        horario,
-        tipo_atendimento || null,
-        status_consulta || "Agendada",
-        observacoes || null,
+        body.data_consulta,
+        body.horario,
+        textoOpcional(body.tipo_atendimento),
+        textoOpcional(body.status_consulta) || STATUS_PADRAO,
+        textoOpcional(body.observacoes),
       ]
     );
 
-    /* =====================================================
-       AUDITORIA
-       ===================================================== */
-
-    await registrarAuditoria({
-      tipo_usuario: sessao.tipo_usuario,
-      id_usuario:
-        sessao.id_usuario ||
-        sessao.id_psicologo ||
-        null,
+    await auditar({
+      tipoUsuario: sessao.tipo_usuario,
+      idUsuario: idUsuarioDaSessao(sessao),
       acao: "CRIAR",
-      tabela_afetada: "consultas",
-      registro_id: result.rows[0].id_consulta,
+      tabelaAfetada: "consultas",
+      registroId: result.rows[0].id_consulta,
       detalhes: "Consulta criada.",
     });
 
-    return Response.json(
-      result.rows[0],
-      {
-        status: 201,
-      }
-    );
-
+    return Response.json(result.rows[0], { status: 201 });
   } catch (error) {
-    console.error(
-      "Erro ao criar consulta:",
-      error
-    );
+    console.error("Erro ao criar consulta:", error);
 
-    return Response.json(
-      {
-        erro: "Erro ao criar consulta.",
-      },
-      {
-        status: 500,
-      }
-    );
+    return respostaErroInterno("Erro ao criar consulta.");
   }
 }
 
 /* =========================================================
    PUT — ATUALIZAR CONSULTA
-   Admin e psicólogo.
+
+   Permissões: administrador e psicólogo.
+   O psicólogo somente pode alterar suas próprias consultas
+   e não pode transferi-las para outro psicólogo.
    ========================================================= */
 
 export async function PUT(req) {
@@ -408,7 +387,7 @@ export async function PUT(req) {
     const sessao = await obterSessao(req);
 
     if (!sessao) {
-      return respostaNaoAutorizado();
+      return respostaNaoAutenticado();
     }
 
     if (
@@ -420,51 +399,35 @@ export async function PUT(req) {
       );
     }
 
-    const body = await req.json();
+    const body = await lerBody(req);
 
-    if (!body || typeof body !== "object") {
-      return respostaDadosInvalidos();
+    if (!body) {
+      return respostaDadosInvalidos("Corpo da requisição inválido.");
     }
 
-    const {
-      id_consulta,
-      id_paciente,
-      id_psicologo,
-      data_consulta,
-      horario,
-      tipo_atendimento,
-      status_consulta,
-      observacoes,
-    } = body;
+    const idConsulta = converterIdPositivo(body.id_consulta);
+    const idPaciente = converterIdPositivo(body.id_paciente);
+    const idPsicologo = converterIdPositivo(body.id_psicologo);
 
-    const idConsulta = Number(id_consulta);
-    const idPaciente = Number(id_paciente);
-    const idPsicologo = Number(id_psicologo);
+    if (!idConsulta || !idPaciente || !idPsicologo) {
+      return respostaDadosInvalidos("Dados da consulta inválidos.");
+    }
 
-    if (
-      !Number.isInteger(idConsulta) ||
-      idConsulta <= 0 ||
-      !Number.isInteger(idPaciente) ||
-      idPaciente <= 0 ||
-      !Number.isInteger(idPsicologo) ||
-      idPsicologo <= 0 ||
-      !data_consulta ||
-      !horario
-    ) {
+    if (!dataValida(body.data_consulta)) {
       return respostaDadosInvalidos(
-        "Dados da consulta inválidos."
+        "Data inválida. Use o formato AAAA-MM-DD."
       );
     }
 
-    /* =====================================================
-       BUSCAR CONSULTA ATUAL
-       ===================================================== */
+    if (!horarioValido(body.horario)) {
+      return respostaDadosInvalidos(
+        "Horário inválido. Use o formato HH:MM."
+      );
+    }
 
     const consultaAtual = await pool.query(
       `
-      SELECT
-        id_consulta,
-        id_psicologo
+      SELECT id_consulta, id_psicologo
       FROM consultas
       WHERE id_consulta = $1
       `,
@@ -472,93 +435,37 @@ export async function PUT(req) {
     );
 
     if (consultaAtual.rowCount === 0) {
-      return Response.json(
-        {
-          erro: "Consulta não encontrada.",
-        },
-        {
-          status: 404,
-        }
-      );
+      return respostaNaoEncontrado("Consulta não encontrada.");
     }
 
-    const psicologoAtual =
-      Number(consultaAtual.rows[0].id_psicologo);
+    if (sessao.tipo_usuario === "psicologo") {
+      const idPsicologoSessao = Number(sessao.id_psicologo);
 
-    /* =====================================================
-       PSICÓLOGO SÓ PODE ALTERAR SUAS PRÓPRIAS CONSULTAS
-       ===================================================== */
+      if (Number(consultaAtual.rows[0].id_psicologo) !== idPsicologoSessao) {
+        return respostaNaoAutorizado(
+          "Você não pode alterar uma consulta de outro psicólogo."
+        );
+      }
 
-    if (
-      sessao.tipo_usuario === "psicologo" &&
-      psicologoAtual !== Number(sessao.id_psicologo)
-    ) {
-      return respostaNaoAutorizado(
-        "Você não pode alterar uma consulta de outro psicólogo."
-      );
+      if (idPsicologo !== idPsicologoSessao) {
+        return respostaNaoAutorizado(
+          "Você não pode transferir a consulta para outro psicólogo."
+        );
+      }
     }
 
-    if (
-      sessao.tipo_usuario === "psicologo" &&
-      idPsicologo !== Number(sessao.id_psicologo)
-    ) {
-      return respostaNaoAutorizado(
-        "Você não pode transferir a consulta para outro psicólogo."
-      );
+    const referencias = await verificarReferencias(idPaciente, idPsicologo);
+
+    if (!referencias.paciente) {
+      return respostaNaoEncontrado("Paciente não encontrado.");
     }
 
-    /* =====================================================
-       VERIFICAR PACIENTE
-       ===================================================== */
-
-    const paciente = await pool.query(
-      `
-      SELECT id_paciente
-      FROM pacientes
-      WHERE id_paciente = $1
-      `,
-      [idPaciente]
-    );
-
-    if (paciente.rowCount === 0) {
-      return Response.json(
-        {
-          erro: "Paciente não encontrado.",
-        },
-        {
-          status: 404,
-        }
-      );
+    if (!referencias.psicologo) {
+      return respostaNaoEncontrado("Psicólogo não encontrado.");
     }
 
-    /* =====================================================
-       VERIFICAR PSICÓLOGO
-       ===================================================== */
-
-    const psicologo = await pool.query(
-      `
-      SELECT id_psicologo
-      FROM psicologos
-      WHERE id_psicologo = $1
-      `,
-      [idPsicologo]
-    );
-
-    if (psicologo.rowCount === 0) {
-      return Response.json(
-        {
-          erro: "Psicólogo não encontrado.",
-        },
-        {
-          status: 404,
-        }
-      );
-    }
-
-    /* =====================================================
-       ATUALIZAR
-       ===================================================== */
-
+    // COALESCE: se o status não for enviado, mantém o atual
+    // (antes, uma consulta "Realizada" voltava para "Agendada")
     const result = await pool.query(
       `
       UPDATE consultas
@@ -568,7 +475,7 @@ export async function PUT(req) {
         data_consulta = $3,
         horario = $4,
         tipo_atendimento = $5,
-        status_consulta = $6,
+        status_consulta = COALESCE($6, status_consulta),
         observacoes = $7
       WHERE id_consulta = $8
       RETURNING *
@@ -576,53 +483,37 @@ export async function PUT(req) {
       [
         idPaciente,
         idPsicologo,
-        data_consulta,
-        horario,
-        tipo_atendimento || null,
-        status_consulta || "Agendada",
-        observacoes || null,
+        body.data_consulta,
+        body.horario,
+        textoOpcional(body.tipo_atendimento),
+        textoOpcional(body.status_consulta),
+        textoOpcional(body.observacoes),
         idConsulta,
       ]
     );
 
-    /* =====================================================
-       AUDITORIA
-       ===================================================== */
-
-    await registrarAuditoria({
-      tipo_usuario: sessao.tipo_usuario,
-      id_usuario:
-        sessao.id_usuario ||
-        sessao.id_psicologo ||
-        null,
+    await auditar({
+      tipoUsuario: sessao.tipo_usuario,
+      idUsuario: idUsuarioDaSessao(sessao),
       acao: "ATUALIZAR",
-      tabela_afetada: "consultas",
-      registro_id: idConsulta,
+      tabelaAfetada: "consultas",
+      registroId: idConsulta,
       detalhes: "Consulta atualizada.",
     });
 
     return Response.json(result.rows[0]);
-
   } catch (error) {
-    console.error(
-      "Erro ao atualizar consulta:",
-      error
-    );
+    console.error("Erro ao atualizar consulta:", error);
 
-    return Response.json(
-      {
-        erro: "Erro ao atualizar consulta.",
-      },
-      {
-        status: 500,
-      }
-    );
+    return respostaErroInterno("Erro ao atualizar consulta.");
   }
 }
 
 /* =========================================================
    DELETE — EXCLUIR CONSULTA
-   Admin e psicólogo.
+
+   Permissões: administrador e psicólogo.
+   O psicólogo somente pode excluir suas próprias consultas.
    ========================================================= */
 
 export async function DELETE(req) {
@@ -630,7 +521,7 @@ export async function DELETE(req) {
     const sessao = await obterSessao(req);
 
     if (!sessao) {
-      return respostaNaoAutorizado();
+      return respostaNaoAutenticado();
     }
 
     if (
@@ -643,29 +534,15 @@ export async function DELETE(req) {
     }
 
     const { searchParams } = new URL(req.url);
+    const idConsulta = converterIdPositivo(searchParams.get("id"));
 
-    const idConsulta = Number(
-      searchParams.get("id")
-    );
-
-    if (
-      !Number.isInteger(idConsulta) ||
-      idConsulta <= 0
-    ) {
-      return respostaDadosInvalidos(
-        "ID da consulta inválido."
-      );
+    if (!idConsulta) {
+      return respostaDadosInvalidos("ID da consulta inválido.");
     }
-
-    /* =====================================================
-       BUSCAR CONSULTA
-       ===================================================== */
 
     const consulta = await pool.query(
       `
-      SELECT
-        id_consulta,
-        id_psicologo
+      SELECT id_consulta, id_psicologo
       FROM consultas
       WHERE id_consulta = $1
       `,
@@ -673,57 +550,46 @@ export async function DELETE(req) {
     );
 
     if (consulta.rowCount === 0) {
-      return Response.json(
-        {
-          erro: "Consulta não encontrada.",
-        },
-        {
-          status: 404,
-        }
-      );
+      return respostaNaoEncontrado("Consulta não encontrada.");
     }
-
-    const idPsicologoConsulta =
-      Number(consulta.rows[0].id_psicologo);
-
-    /* =====================================================
-       PSICÓLOGO SÓ PODE EXCLUIR SUAS CONSULTAS
-       ===================================================== */
 
     if (
       sessao.tipo_usuario === "psicologo" &&
-      idPsicologoConsulta !== Number(sessao.id_psicologo)
+      Number(consulta.rows[0].id_psicologo) !== Number(sessao.id_psicologo)
     ) {
       return respostaNaoAutorizado(
         "Você não pode excluir uma consulta de outro psicólogo."
       );
     }
 
-    /* =====================================================
-       EXCLUIR
-       ===================================================== */
+    try {
+      await pool.query(
+        `
+        DELETE FROM consultas
+        WHERE id_consulta = $1
+        `,
+        [idConsulta]
+      );
+    } catch (error) {
+      // 23503 = violação de chave estrangeira (há registros vinculados)
+      if (error.code === "23503") {
+        return Response.json(
+          {
+            erro: "Não é possível excluir: há registros vinculados a esta consulta.",
+          },
+          { status: 409 }
+        );
+      }
 
-    await pool.query(
-      `
-      DELETE FROM consultas
-      WHERE id_consulta = $1
-      `,
-      [idConsulta]
-    );
+      throw error;
+    }
 
-    /* =====================================================
-       AUDITORIA
-       ===================================================== */
-
-    await registrarAuditoria({
-      tipo_usuario: sessao.tipo_usuario,
-      id_usuario:
-        sessao.id_usuario ||
-        sessao.id_psicologo ||
-        null,
+    await auditar({
+      tipoUsuario: sessao.tipo_usuario,
+      idUsuario: idUsuarioDaSessao(sessao),
       acao: "EXCLUIR",
-      tabela_afetada: "consultas",
-      registro_id: idConsulta,
+      tabelaAfetada: "consultas",
+      registroId: idConsulta,
       detalhes: "Consulta excluída.",
     });
 
@@ -731,20 +597,9 @@ export async function DELETE(req) {
       sucesso: true,
       mensagem: "Consulta excluída com sucesso.",
     });
-
   } catch (error) {
-    console.error(
-      "Erro ao excluir consulta:",
-      error
-    );
+    console.error("Erro ao excluir consulta:", error);
 
-    return Response.json(
-      {
-        erro: "Erro ao excluir consulta.",
-      },
-      {
-        status: 500,
-      }
-    );
+    return respostaErroInterno("Erro ao excluir consulta.");
   }
 }

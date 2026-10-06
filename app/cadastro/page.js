@@ -3,6 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+// Lê o JSON sem quebrar caso a API devolva HTML ou texto (ex.: erro 500)
+async function lerJson(resposta) {
+  try {
+    return await resposta.json();
+  } catch {
+    return null;
+  }
+}
+
 export default function Cadastro() {
   const router = useRouter();
 
@@ -32,12 +41,24 @@ export default function Cadastro() {
   async function cadastrar(e) {
     e.preventDefault();
 
+    // Evita envio duplicado (duplo clique)
+    if (carregando) {
+      return;
+    }
+
+    const cpfNumeros = formulario.cpf.replace(/\D/g, "");
+
     if (
       !formulario.nome_completo.trim() ||
       !formulario.data_nascimento ||
-      !formulario.cpf.trim()
+      !cpfNumeros
     ) {
       alert("Preencha nome, CPF e data de nascimento.");
+      return;
+    }
+
+    if (cpfNumeros.length !== 11) {
+      alert("CPF inválido. Informe os 11 dígitos.");
       return;
     }
 
@@ -49,6 +70,8 @@ export default function Cadastro() {
     }
 
     setCarregando(true);
+
+    let cadastroConcluido = false;
 
     try {
       // =====================================================
@@ -63,26 +86,29 @@ export default function Cadastro() {
         body: JSON.stringify(formulario),
       });
 
-      const resultado = await resposta.json();
+      const resultado = await lerJson(resposta);
 
-      if (!resposta.ok || resultado.erro) {
-        alert(resultado.erro || "Erro ao realizar cadastro.");
-        setCarregando(false);
+      if (!resposta.ok || !resultado || resultado.erro) {
+        alert(
+          resultado?.erro ||
+            `Erro ao realizar cadastro (status ${resposta.status}).`
+        );
         return;
       }
 
       // =====================================================
-      // 2. OBTER ID DO PACIENTE CRIADO
+      // 2. OBTER TOKEN DO CONSENTIMENTO
       // =====================================================
 
-      const idPaciente = resultado.id_paciente;
+      const tokenConsentimento = resultado.token_consentimento;
 
-      if (!idPaciente) {
+      if (!resultado.id_paciente || !tokenConsentimento) {
+        // Não loga o objeto inteiro: ele contém o token
+        console.error("Resposta do cadastro sem ID ou token de consentimento.");
+
         alert(
-          "O paciente foi cadastrado, mas não foi possível identificar o cadastro para registrar o consentimento LGPD."
+          "O paciente foi cadastrado, porém não foi possível obter o token necessário para registrar o consentimento LGPD. Entre em contato com a clínica."
         );
-
-        setCarregando(false);
         return;
       }
 
@@ -90,47 +116,41 @@ export default function Cadastro() {
       // 3. REGISTRAR CONSENTIMENTO LGPD
       // =====================================================
 
-      const respostaConsentimento = await fetch(
-        "/api/consentimentos",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id_paciente: idPaciente,
-            aceitou: true,
+      const respostaConsentimento = await fetch("/api/consentimentos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token_consentimento: tokenConsentimento,
+          aceitou: true,
+        }),
+      });
 
-            // O servidor deve identificar o IP.
-            // Não confiamos no navegador para informar esse dado.
-            ip_aceite: null,
-          }),
-        }
-      );
-
-      const resultadoConsentimento =
-        await respostaConsentimento.json();
+      const resultadoConsentimento = await lerJson(respostaConsentimento);
 
       if (
         !respostaConsentimento.ok ||
+        !resultadoConsentimento ||
         resultadoConsentimento.erro
       ) {
         console.error(
-          "Erro ao registrar consentimento:",
-          resultadoConsentimento
+          "Erro ao registrar consentimento (status):",
+          respostaConsentimento.status
         );
 
         alert(
-          "O paciente foi cadastrado, porém não foi possível registrar o consentimento LGPD. Entre em contato com a clínica."
+          resultadoConsentimento?.erro ||
+            "O paciente foi cadastrado, porém não foi possível registrar o consentimento LGPD. Entre em contato com a clínica."
         );
-
-        setCarregando(false);
         return;
       }
 
       // =====================================================
       // 4. CADASTRO CONCLUÍDO
       // =====================================================
+
+      cadastroConcluido = true;
 
       alert(
         "Cadastro realizado com sucesso! Seu consentimento de privacidade também foi registrado."
@@ -143,49 +163,41 @@ export default function Cadastro() {
       alert(
         "Não foi possível concluir o cadastro. Verifique sua conexão e tente novamente."
       );
-
-      setCarregando(false);
+    } finally {
+      // Em caso de sucesso, mantém o botão travado até a navegação terminar
+      if (!cadastroConcluido) {
+        setCarregando(false);
+      }
     }
   }
 
   return (
     <div className="min-h-screen bg-[#f5f1eb] flex items-center justify-center p-4">
       <div className="w-full max-w-3xl bg-white rounded-[34px] shadow-2xl p-8 md:p-12">
-
-        {/* =====================================================
-            CABEÇALHO
-        ===================================================== */}
-
+        {/* CABEÇALHO */}
         <div className="text-center mb-10">
-          <div className="text-[#1d3557] text-5xl mb-3">
-            Ψ
-          </div>
+          <div className="text-[#1d3557] text-5xl mb-3">Ψ</div>
 
-          <h1 className="text-4xl font-serif text-[#1d3557]">
-            Criar cadastro
-          </h1>
+          <h1 className="text-4xl font-serif text-[#1d3557]">Criar cadastro</h1>
 
           <p className="text-gray-500 mt-2">
             Cadastre seus dados para acessar a Clínica Psi
           </p>
         </div>
 
-        {/* =====================================================
-            FORMULÁRIO
-        ===================================================== */}
-
+        {/* FORMULÁRIO */}
         <form onSubmit={cadastrar} className="space-y-6">
-
-          {/* =====================================================
-              NOME
-          ===================================================== */}
-
+          {/* NOME */}
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-2">
+            <label
+              htmlFor="nome_completo"
+              className="block text-sm font-medium text-gray-600 mb-2"
+            >
               Nome completo *
             </label>
 
             <input
+              id="nome_completo"
               type="text"
               name="nome_completo"
               value={formulario.nome_completo}
@@ -197,21 +209,22 @@ export default function Cadastro() {
             />
           </div>
 
-          {/* =====================================================
-              CPF E DATA DE NASCIMENTO
-          ===================================================== */}
-
+          {/* CPF E DATA DE NASCIMENTO */}
           <div className="grid md:grid-cols-2 gap-5">
-
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">
+              <label
+                htmlFor="cpf"
+                className="block text-sm font-medium text-gray-600 mb-2"
+              >
                 CPF *
               </label>
 
               <input
+                id="cpf"
                 type="text"
                 name="cpf"
                 inputMode="numeric"
+                maxLength={14}
                 value={formulario.cpf}
                 onChange={alterarCampo}
                 placeholder="000.000.000-00"
@@ -222,11 +235,15 @@ export default function Cadastro() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">
+              <label
+                htmlFor="data_nascimento"
+                className="block text-sm font-medium text-gray-600 mb-2"
+              >
                 Data de nascimento *
               </label>
 
               <input
+                id="data_nascimento"
                 type="date"
                 name="data_nascimento"
                 value={formulario.data_nascimento}
@@ -235,22 +252,21 @@ export default function Cadastro() {
                 className="w-full border border-gray-200 rounded-2xl p-4 text-black outline-none focus:border-[#2b4c7e]"
               />
             </div>
-
           </div>
 
-          {/* =====================================================
-              TELEFONE E E-MAIL
-          ===================================================== */}
-
+          {/* TELEFONE E E-MAIL */}
           <div className="grid md:grid-cols-2 gap-5">
-
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">
+              <label
+                htmlFor="telefone"
+                className="block text-sm font-medium text-gray-600 mb-2"
+              >
                 Telefone
               </label>
 
               <input
-                type="text"
+                id="telefone"
+                type="tel"
                 name="telefone"
                 value={formulario.telefone}
                 onChange={alterarCampo}
@@ -261,11 +277,15 @@ export default function Cadastro() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-600 mb-2"
+              >
                 E-mail
               </label>
 
               <input
+                id="email"
                 type="email"
                 name="email"
                 value={formulario.email}
@@ -275,19 +295,19 @@ export default function Cadastro() {
                 className="w-full border border-gray-200 rounded-2xl p-4 text-black outline-none focus:border-[#2b4c7e]"
               />
             </div>
-
           </div>
 
-          {/* =====================================================
-              ENDEREÇO
-          ===================================================== */}
-
+          {/* ENDEREÇO */}
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-2">
+            <label
+              htmlFor="endereco"
+              className="block text-sm font-medium text-gray-600 mb-2"
+            >
               Endereço
             </label>
 
             <input
+              id="endereco"
               type="text"
               name="endereco"
               value={formulario.endereco}
@@ -298,18 +318,18 @@ export default function Cadastro() {
             />
           </div>
 
-          {/* =====================================================
-              PROFISSÃO E ESTADO CIVIL
-          ===================================================== */}
-
+          {/* PROFISSÃO E ESTADO CIVIL */}
           <div className="grid md:grid-cols-2 gap-5">
-
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">
+              <label
+                htmlFor="profissao"
+                className="block text-sm font-medium text-gray-600 mb-2"
+              >
                 Profissão
               </label>
 
               <input
+                id="profissao"
                 type="text"
                 name="profissao"
                 value={formulario.profissao}
@@ -320,11 +340,15 @@ export default function Cadastro() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">
+              <label
+                htmlFor="estado_civil"
+                className="block text-sm font-medium text-gray-600 mb-2"
+              >
                 Estado civil
               </label>
 
               <select
+                id="estado_civil"
                 name="estado_civil"
                 value={formulario.estado_civil}
                 onChange={alterarCampo}
@@ -333,99 +357,47 @@ export default function Cadastro() {
                 <option value="">Selecione</option>
                 <option value="Solteiro">Solteiro</option>
                 <option value="Casado">Casado</option>
+                <option value="União estável">União estável</option>
                 <option value="Divorciado">Divorciado</option>
                 <option value="Viúvo">Viúvo</option>
-                <option value="União estável">
-                  União estável
-                </option>
               </select>
             </div>
-
           </div>
 
-          {/* =====================================================
-              CONSENTIMENTO LGPD
-          ===================================================== */}
-
-          <div
-            className={`border rounded-2xl p-5 transition ${
-              aceitouLGPD
-                ? "border-[#2b4c7e]/40 bg-[#f1f5f9]"
-                : "border-[#1d3557]/15 bg-[#f8f7f4]"
-            }`}
-          >
-
-            <div className="flex items-start gap-3">
-
+          {/* CONSENTIMENTO LGPD */}
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
+            <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                id="aceiteLGPD"
                 checked={aceitouLGPD}
-                onChange={(e) =>
-                  setAceitouLGPD(e.target.checked)
-                }
-                className="mt-1 w-5 h-5 accent-[#2b4c7e] cursor-pointer"
-                required
+                onChange={(e) => setAceitouLGPD(e.target.checked)}
+                className="mt-1 h-5 w-5 accent-[#1d3557]"
               />
 
-              <label
-                htmlFor="aceiteLGPD"
-                className="text-sm text-gray-600 leading-relaxed cursor-pointer"
-              >
-                Li e estou de acordo com o{" "}
-
-                <span className="font-semibold text-[#1d3557]">
-                  Termo de Consentimento e Privacidade
-                </span>
-
-                . Autorizo o tratamento dos meus dados pessoais
-                para as finalidades relacionadas ao atendimento
-                psicológico e à utilização do sistema da Clínica
-                Psi.
-              </label>
-
-            </div>
-
-            {/* =================================================
-                INDICAÇÃO VISUAL DO ACEITE
-            ================================================= */}
-
-            {aceitouLGPD && (
-              <div className="mt-4 text-sm text-green-700 font-medium">
-                ✓ Termo aceito. O consentimento será registrado
-                junto ao seu cadastro.
-              </div>
-            )}
-
+              <span className="text-sm text-gray-700">
+                Li e aceito o Termo de Consentimento e Privacidade, autorizando o
+                tratamento dos meus dados pessoais pela Clínica Psi, conforme a
+                Lei Geral de Proteção de Dados (LGPD).
+              </span>
+            </label>
           </div>
 
-          {/* =====================================================
-              BOTÃO CADASTRAR
-          ===================================================== */}
-
+          {/* BOTÃO */}
           <button
             type="submit"
             disabled={carregando}
-            className="w-full bg-[#2b4c7e] hover:bg-[#244267] text-white rounded-2xl p-4 font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full rounded-2xl bg-[#1d3557] p-4 font-semibold text-white transition hover:bg-[#2b4c7e] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {carregando
-              ? "Cadastrando..."
-              : "Criar cadastro"}
+            {carregando ? "Cadastrando..." : "Criar cadastro"}
           </button>
 
-          {/* =====================================================
-              BOTÃO LOGIN
-          ===================================================== */}
-
-          <button
-            type="button"
-            onClick={() => router.push("/login")}
-            disabled={carregando}
-            className="w-full border border-[#1d3557]/20 text-[#1d3557] rounded-2xl p-4 font-medium hover:bg-[#f8f7f4] transition disabled:opacity-60"
-          >
-            Voltar para o login
-          </button>
-
+          {/* LINK PARA LOGIN */}
+          <p className="text-center text-sm text-gray-500">
+            Já possui cadastro?{" "}
+            <a href="/login" className="font-semibold text-[#1d3557] underline">
+              Entrar
+            </a>
+          </p>
         </form>
       </div>
     </div>

@@ -42,3 +42,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# backups do banco de dados - nao enviar ao GitHub
+*.dump

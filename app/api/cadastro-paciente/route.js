@@ -1,5 +1,6 @@
 import pool from "@/lib/db";
 import { registrarAuditoria } from "@/lib/auditoria";
+import { criarSessao } from "@/lib/sessao";
 
 function limparCPF(cpf) {
   return String(cpf || "").replace(/\D/g, "");
@@ -10,14 +11,12 @@ function validarCPF(cpf) {
     return false;
   }
 
-  // Impede CPFs como 11111111111, 22222222222 etc.
   if (/^(\d)\1{10}$/.test(cpf)) {
     return false;
   }
 
   let soma = 0;
 
-  // Primeiro dígito verificador
   for (let i = 0; i < 9; i++) {
     soma += Number(cpf[i]) * (10 - i);
   }
@@ -31,7 +30,6 @@ function validarCPF(cpf) {
 
   soma = 0;
 
-  // Segundo dígito verificador
   for (let i = 0; i < 10; i++) {
     soma += Number(cpf[i]) * (11 - i);
   }
@@ -59,7 +57,6 @@ function validarDataNascimento(data) {
     return false;
   }
 
-  // Limite de segurança para evitar datas absurdamente antigas
   const ano = dataNascimento.getFullYear();
 
   if (ano < 1900) {
@@ -216,7 +213,10 @@ export async function POST(req) {
       );
     }
 
-    // Se algum campo ultrapassar o limite definido
+    // =========================
+    // LIMITES DOS CAMPOS
+    // =========================
+
     if (
       (telefone && telefoneLimpo === null) ||
       (email && emailLimpo === null) ||
@@ -305,11 +305,28 @@ export async function POST(req) {
       detalhes: "Novo paciente realizou cadastro público.",
     });
 
+    // =====================================================
+    // TOKEN TEMPORÁRIO PARA REGISTRAR O CONSENTIMENTO
+    // =====================================================
+
+    const tokenConsentimento = await criarSessao(
+      {
+        tipo: "consentimento",
+        id_paciente: paciente.id_paciente,
+      },
+      "10m"
+    );
+
+    // =========================
+    // RESPOSTA
+    // =========================
+
     return Response.json(
       {
         mensagem: "Paciente cadastrado com sucesso.",
         id_paciente: paciente.id_paciente,
         nome: paciente.nome_completo,
+        token_consentimento: tokenConsentimento,
       },
       {
         status: 201,
