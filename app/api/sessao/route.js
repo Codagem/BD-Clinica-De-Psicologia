@@ -66,3 +66,40 @@ export async function GET(req) {
     );
   }
 }
+
+export async function DELETE() {
+  try {
+    const resposta = Response.json({
+      sucesso: true,
+      mensagem: "Sessão encerrada com sucesso.",
+    });
+
+    resposta.headers.set(
+      "Set-Cookie",
+      [
+        "sessao=",
+        "Path=/",
+        "HttpOnly",
+        "SameSite=Lax",
+        "Max-Age=0",
+        process.env.NODE_ENV === "production" ? "Secure" : "",
+      ]
+        .filter(Boolean)
+        .join("; ")
+    );
+
+    return resposta;
+  } catch (error) {
+    console.error("Erro ao encerrar sessão:", error);
+
+    return Response.json(
+      {
+        sucesso: false,
+        erro: "Não foi possível encerrar a sessão.",
+      },
+      {
+        status: 500,
+      }
+    );
+  }
+}

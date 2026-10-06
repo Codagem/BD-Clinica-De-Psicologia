@@ -38,15 +38,20 @@ const tipo = localStorage.getItem("tipo_usuario");
 setTipoUsuario(tipo || "admin");
 }, []);
 
-function sair() {
-localStorage.removeItem("logado");
-localStorage.removeItem("tipo_usuario");
-localStorage.removeItem("id_paciente");
+async function sair() {
+  try {
+    await fetch("/api/sessao", {
+      method: "DELETE",
+    });
+  } catch (error) {
+    console.error("Erro ao encerrar sessão:", error);
+  } finally {
+    localStorage.removeItem("logado");
+    localStorage.removeItem("tipo_usuario");
+    localStorage.removeItem("id_paciente");
 
-```
-router.push("/login");
-```
-
+    router.push("/login");
+  }
 }
 
 function fecharMenu() {
