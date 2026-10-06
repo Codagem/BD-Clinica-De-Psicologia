@@ -50,7 +50,43 @@ export async function GET(req) {
 
     let resultado;
 
-    if (sessao.tipo_usuario === "estagiario") {
+    // =========================================================
+    // PSICÓLOGO
+    // Pode visualizar somente o próprio cadastro
+    // =========================================================
+    if (sessao.tipo_usuario === "psicologo") {
+      if (!sessao.id_psicologo) {
+        return Response.json(
+          {
+            erro: "Psicólogo não identificado na sessão.",
+          },
+          {
+            status: 403,
+          }
+        );
+      }
+
+      resultado = await db.query(
+        `
+          SELECT
+            id_psicologo,
+            nome,
+            especialidade,
+            telefone,
+            email
+          FROM psicologos
+          WHERE id_psicologo = $1
+          ORDER BY nome ASC
+        `,
+        [sessao.id_psicologo]
+      );
+    }
+
+    // =========================================================
+    // ESTAGIÁRIO
+    // Pode visualizar os psicólogos para consulta/supervisão
+    // =========================================================
+    else if (sessao.tipo_usuario === "estagiario") {
       resultado = await db.query(`
         SELECT
           id_psicologo,
@@ -59,7 +95,13 @@ export async function GET(req) {
         FROM psicologos
         ORDER BY nome ASC
       `);
-    } else {
+    }
+
+    // =========================================================
+    // ADMIN
+    // Pode visualizar todos os psicólogos
+    // =========================================================
+    else if (sessao.tipo_usuario === "admin") {
       resultado = await db.query(`
         SELECT
           id_psicologo,
@@ -73,6 +115,7 @@ export async function GET(req) {
     }
 
     return Response.json(resultado.rows);
+
   } catch (error) {
     console.error(
       "Erro ao listar psicólogos:",

@@ -42,14 +42,19 @@ export default function Cadastro() {
     }
 
     if (!aceitouLGPD) {
-      alert("É necessário aceitar o Termo de Consentimento e Privacidade para realizar o cadastro.");
+      alert(
+        "É necessário aceitar o Termo de Consentimento e Privacidade para realizar o cadastro."
+      );
       return;
     }
 
     setCarregando(true);
 
     try {
-      // 1. Cria o paciente
+      // =====================================================
+      // 1. CRIAR PACIENTE
+      // =====================================================
+
       const resposta = await fetch("/api/cadastro-paciente", {
         method: "POST",
         headers: {
@@ -66,46 +71,79 @@ export default function Cadastro() {
         return;
       }
 
-      // 2. Descobre o ID do paciente criado
+      // =====================================================
+      // 2. OBTER ID DO PACIENTE CRIADO
+      // =====================================================
+
       const idPaciente = resultado.id_paciente;
 
       if (!idPaciente) {
         alert(
-          "Paciente cadastrado, mas não foi possível registrar o consentimento LGPD."
+          "O paciente foi cadastrado, mas não foi possível identificar o cadastro para registrar o consentimento LGPD."
         );
+
         setCarregando(false);
         return;
       }
 
-      // 3. Registra o consentimento LGPD
-      const respostaConsentimento = await fetch("/api/consentimentos", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id_paciente: idPaciente,
-          aceitou: true,
-          ip_aceite: null,
-        }),
-      });
+      // =====================================================
+      // 3. REGISTRAR CONSENTIMENTO LGPD
+      // =====================================================
 
-      const resultadoConsentimento = await respostaConsentimento.json();
+      const respostaConsentimento = await fetch(
+        "/api/consentimentos",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id_paciente: idPaciente,
+            aceitou: true,
 
-      if (!respostaConsentimento.ok || resultadoConsentimento.erro) {
+            // O servidor deve identificar o IP.
+            // Não confiamos no navegador para informar esse dado.
+            ip_aceite: null,
+          }),
+        }
+      );
+
+      const resultadoConsentimento =
+        await respostaConsentimento.json();
+
+      if (
+        !respostaConsentimento.ok ||
+        resultadoConsentimento.erro
+      ) {
+        console.error(
+          "Erro ao registrar consentimento:",
+          resultadoConsentimento
+        );
+
         alert(
-          "Paciente cadastrado, porém houve um problema ao registrar o consentimento LGPD."
+          "O paciente foi cadastrado, porém não foi possível registrar o consentimento LGPD. Entre em contato com a clínica."
         );
+
         setCarregando(false);
         return;
       }
 
-      alert("Cadastro realizado com sucesso!");
+      // =====================================================
+      // 4. CADASTRO CONCLUÍDO
+      // =====================================================
+
+      alert(
+        "Cadastro realizado com sucesso! Seu consentimento de privacidade também foi registrado."
+      );
 
       router.push("/login");
     } catch (error) {
-      console.error(error);
-      alert("Erro ao realizar cadastro.");
+      console.error("Erro no cadastro:", error);
+
+      alert(
+        "Não foi possível concluir o cadastro. Verifique sua conexão e tente novamente."
+      );
+
       setCarregando(false);
     }
   }
@@ -113,6 +151,10 @@ export default function Cadastro() {
   return (
     <div className="min-h-screen bg-[#f5f1eb] flex items-center justify-center p-4">
       <div className="w-full max-w-3xl bg-white rounded-[34px] shadow-2xl p-8 md:p-12">
+
+        {/* =====================================================
+            CABEÇALHO
+        ===================================================== */}
 
         <div className="text-center mb-10">
           <div className="text-[#1d3557] text-5xl mb-3">
@@ -128,9 +170,16 @@ export default function Cadastro() {
           </p>
         </div>
 
+        {/* =====================================================
+            FORMULÁRIO
+        ===================================================== */}
+
         <form onSubmit={cadastrar} className="space-y-6">
 
-          {/* NOME */}
+          {/* =====================================================
+              NOME
+          ===================================================== */}
+
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-2">
               Nome completo *
@@ -142,11 +191,16 @@ export default function Cadastro() {
               value={formulario.nome_completo}
               onChange={alterarCampo}
               placeholder="Digite seu nome completo"
+              autoComplete="name"
+              required
               className="w-full border border-gray-200 rounded-2xl p-4 text-black outline-none focus:border-[#2b4c7e]"
             />
           </div>
 
-          {/* CPF E DATA */}
+          {/* =====================================================
+              CPF E DATA DE NASCIMENTO
+          ===================================================== */}
+
           <div className="grid md:grid-cols-2 gap-5">
 
             <div>
@@ -161,6 +215,8 @@ export default function Cadastro() {
                 value={formulario.cpf}
                 onChange={alterarCampo}
                 placeholder="000.000.000-00"
+                autoComplete="off"
+                required
                 className="w-full border border-gray-200 rounded-2xl p-4 text-black outline-none focus:border-[#2b4c7e]"
               />
             </div>
@@ -175,13 +231,17 @@ export default function Cadastro() {
                 name="data_nascimento"
                 value={formulario.data_nascimento}
                 onChange={alterarCampo}
+                required
                 className="w-full border border-gray-200 rounded-2xl p-4 text-black outline-none focus:border-[#2b4c7e]"
               />
             </div>
 
           </div>
 
-          {/* TELEFONE E EMAIL */}
+          {/* =====================================================
+              TELEFONE E E-MAIL
+          ===================================================== */}
+
           <div className="grid md:grid-cols-2 gap-5">
 
             <div>
@@ -195,6 +255,7 @@ export default function Cadastro() {
                 value={formulario.telefone}
                 onChange={alterarCampo}
                 placeholder="(81) 99999-9999"
+                autoComplete="tel"
                 className="w-full border border-gray-200 rounded-2xl p-4 text-black outline-none focus:border-[#2b4c7e]"
               />
             </div>
@@ -210,13 +271,17 @@ export default function Cadastro() {
                 value={formulario.email}
                 onChange={alterarCampo}
                 placeholder="seuemail@email.com"
+                autoComplete="email"
                 className="w-full border border-gray-200 rounded-2xl p-4 text-black outline-none focus:border-[#2b4c7e]"
               />
             </div>
 
           </div>
 
-          {/* ENDEREÇO */}
+          {/* =====================================================
+              ENDEREÇO
+          ===================================================== */}
+
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-2">
               Endereço
@@ -228,11 +293,15 @@ export default function Cadastro() {
               value={formulario.endereco}
               onChange={alterarCampo}
               placeholder="Digite seu endereço"
+              autoComplete="street-address"
               className="w-full border border-gray-200 rounded-2xl p-4 text-black outline-none focus:border-[#2b4c7e]"
             />
           </div>
 
-          {/* PROFISSÃO E ESTADO CIVIL */}
+          {/* =====================================================
+              PROFISSÃO E ESTADO CIVIL
+          ===================================================== */}
+
           <div className="grid md:grid-cols-2 gap-5">
 
             <div>
@@ -266,14 +335,25 @@ export default function Cadastro() {
                 <option value="Casado">Casado</option>
                 <option value="Divorciado">Divorciado</option>
                 <option value="Viúvo">Viúvo</option>
-                <option value="União estável">União estável</option>
+                <option value="União estável">
+                  União estável
+                </option>
               </select>
             </div>
 
           </div>
 
-          {/* CONSENTIMENTO LGPD */}
-          <div className="border border-[#1d3557]/15 bg-[#f8f7f4] rounded-2xl p-5">
+          {/* =====================================================
+              CONSENTIMENTO LGPD
+          ===================================================== */}
+
+          <div
+            className={`border rounded-2xl p-5 transition ${
+              aceitouLGPD
+                ? "border-[#2b4c7e]/40 bg-[#f1f5f9]"
+                : "border-[#1d3557]/15 bg-[#f8f7f4]"
+            }`}
+          >
 
             <div className="flex items-start gap-3">
 
@@ -281,8 +361,11 @@ export default function Cadastro() {
                 type="checkbox"
                 id="aceiteLGPD"
                 checked={aceitouLGPD}
-                onChange={(e) => setAceitouLGPD(e.target.checked)}
+                onChange={(e) =>
+                  setAceitouLGPD(e.target.checked)
+                }
                 className="mt-1 w-5 h-5 accent-[#2b4c7e] cursor-pointer"
+                required
               />
 
               <label
@@ -290,32 +373,55 @@ export default function Cadastro() {
                 className="text-sm text-gray-600 leading-relaxed cursor-pointer"
               >
                 Li e estou de acordo com o{" "}
+
                 <span className="font-semibold text-[#1d3557]">
                   Termo de Consentimento e Privacidade
                 </span>
-                . Autorizo o tratamento dos meus dados pessoais para as
-                finalidades relacionadas ao atendimento psicológico e à
-                utilização do sistema da Clínica Psi.
+
+                . Autorizo o tratamento dos meus dados pessoais
+                para as finalidades relacionadas ao atendimento
+                psicológico e à utilização do sistema da Clínica
+                Psi.
               </label>
 
             </div>
 
+            {/* =================================================
+                INDICAÇÃO VISUAL DO ACEITE
+            ================================================= */}
+
+            {aceitouLGPD && (
+              <div className="mt-4 text-sm text-green-700 font-medium">
+                ✓ Termo aceito. O consentimento será registrado
+                junto ao seu cadastro.
+              </div>
+            )}
+
           </div>
 
-          {/* BOTÃO CADASTRAR */}
+          {/* =====================================================
+              BOTÃO CADASTRAR
+          ===================================================== */}
+
           <button
             type="submit"
             disabled={carregando}
-            className="w-full bg-[#2b4c7e] hover:bg-[#244267] text-white rounded-2xl p-4 font-semibold transition disabled:opacity-60"
+            className="w-full bg-[#2b4c7e] hover:bg-[#244267] text-white rounded-2xl p-4 font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {carregando ? "Cadastrando..." : "Criar cadastro"}
+            {carregando
+              ? "Cadastrando..."
+              : "Criar cadastro"}
           </button>
 
-          {/* BOTÃO LOGIN */}
+          {/* =====================================================
+              BOTÃO LOGIN
+          ===================================================== */}
+
           <button
             type="button"
             onClick={() => router.push("/login")}
-            className="w-full border border-[#1d3557]/20 text-[#1d3557] rounded-2xl p-4 font-medium hover:bg-[#f8f7f4] transition"
+            disabled={carregando}
+            className="w-full border border-[#1d3557]/20 text-[#1d3557] rounded-2xl p-4 font-medium hover:bg-[#f8f7f4] transition disabled:opacity-60"
           >
             Voltar para o login
           </button>

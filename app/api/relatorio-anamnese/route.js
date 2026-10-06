@@ -21,7 +21,8 @@ export async function GET(req) {
 
     if (
       !sessao ||
-      (sessao.tipo_usuario !== "psicologo" &&
+      (sessao.tipo_usuario !== "admin" &&
+        sessao.tipo_usuario !== "psicologo" &&
         sessao.tipo_usuario !== "estagiario")
     ) {
       return Response.json(

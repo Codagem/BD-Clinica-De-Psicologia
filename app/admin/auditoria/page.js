@@ -3,221 +3,239 @@
 import { useEffect, useState } from "react";
 
 export default function AuditoriaPage() {
-
   const [auditorias, setAuditorias] = useState([]);
   const [carregando, setCarregando] = useState(true);
-
+  const [erro, setErro] = useState("");
 
   useEffect(() => {
+    async function carregarAuditoria() {
+      try {
+        setCarregando(true);
+        setErro("");
 
-    carregarAuditoria();
+        const resposta = await fetch("/api/auditoria", {
+          method: "GET",
+          cache: "no-store",
+        });
 
-  }, []);
+        const dados = await resposta.json();
 
+        console.log("RESPOSTA DA API AUDITORIA:", dados);
 
+        if (!resposta.ok) {
+          throw new Error(
+            dados?.erro ||
+              dados?.mensagem ||
+              "Erro ao buscar auditoria"
+          );
+        }
 
-  async function carregarAuditoria() {
+        const registros = Array.isArray(dados)
+          ? dados
+          : Array.isArray(dados?.registros)
+            ? dados.registros
+            : [];
 
-    try {
+        setAuditorias(registros);
+      } catch (error) {
+        console.error("ERRO AO CARREGAR AUDITORIA:", error);
 
-      const resposta = await fetch("/api/auditoria");
+        setErro(
+          error?.message ||
+            "Não foi possível carregar os registros de auditoria."
+        );
 
-      const dados = await resposta.json();
-
-      setAuditorias(dados);
-
-    } catch(error) {
-
-      console.error(
-        "Erro ao carregar auditoria:",
-        error
-      );
-
-    } finally {
-
-      setCarregando(false);
-
+        setAuditorias([]);
+      } finally {
+        setCarregando(false);
+      }
     }
 
-  }
-
-
+    carregarAuditoria();
+  }, []);
 
   function formatarData(data) {
+    if (!data) return "-";
 
-    if(!data) return "-";
+    const dataFormatada = new Date(data);
 
-    return new Date(data)
-      .toLocaleString("pt-BR");
+    if (Number.isNaN(dataFormatada.getTime())) {
+      return "-";
+    }
 
+    return dataFormatada.toLocaleString("pt-BR");
   }
 
+  function formatarUsuario(tipo, id) {
+    if (!tipo && id == null) {
+      return "-";
+    }
 
+    if (id == null) {
+      return tipo;
+    }
+
+    return `${tipo} (ID: ${id})`;
+  }
 
   return (
+    <div className="min-h-screen bg-[#f8f9fa] p-6 text-black md:p-8">
 
-    <main className="min-h-screen bg-[#f5f1eb] p-6 md:p-10">
+      {/* CABEÇALHO */}
+      <div className="mb-8 rounded-[35px] bg-[#1d3557] p-8 shadow-xl">
+        <p className="font-semibold text-blue-200">
+          Segurança da Informação
+        </p>
 
+        <h1 className="mt-2 text-4xl font-bold text-white">
+          Dashboard de Auditoria
+        </h1>
 
-      <div className="max-w-7xl mx-auto">
+        <p className="mt-3 text-blue-100">
+          Monitoramento dos eventos críticos realizados no sistema.
+        </p>
+      </div>
 
+      {/* TABELA */}
+      <div className="overflow-hidden rounded-[30px] border border-gray-200 bg-white shadow-sm">
 
-        <div className="bg-[#1d3557] text-white rounded-[35px] p-8 shadow-xl mb-8">
+        <div className="border-b border-gray-200 p-6">
+          <h2 className="text-2xl font-bold text-[#1d3557]">
+            Registros de Auditoria
+          </h2>
 
-
-          <p className="text-blue-200 font-semibold">
-            Segurança da Informação
+          <p className="mt-1 text-sm text-gray-600">
+            Histórico das ações realizadas no sistema.
           </p>
-
-
-          <h1 className="text-4xl font-bold mt-2">
-            Dashboard de Auditoria
-          </h1>
-
-
-          <p className="mt-3 text-blue-100">
-            Monitoramento dos eventos críticos realizados no sistema.
-          </p>
-
-
         </div>
 
-
-
-        <div className="bg-white rounded-[30px] shadow-sm border border-gray-100 overflow-hidden">
-
-
-          <div className="p-6 border-b">
-
-            <h2 className="text-2xl font-bold text-[#1d3557]">
-              Trilhas de Auditoria
-            </h2>
-
-
-            <p className="text-gray-500 mt-1">
-              Registros de ações realizadas pelos usuários.
+        {/* ERRO */}
+        {erro && (
+          <div className="m-6 rounded-2xl border border-red-200 bg-red-50 p-5">
+            <p className="font-semibold text-red-700">
+              Erro ao carregar auditoria
             </p>
 
+            <p className="mt-1 text-sm text-red-600">
+              {erro}
+            </p>
           </div>
+        )}
 
+        {/* CARREGANDO */}
+        {carregando && (
+          <div className="p-6">
+            <p className="text-black">
+              Carregando registros de auditoria...
+            </p>
+          </div>
+        )}
 
-
-
-          {carregando ? (
-
-            <div className="p-8 text-center">
-              Carregando registros...
+        {/* VAZIO */}
+        {!carregando &&
+          !erro &&
+          auditorias.length === 0 && (
+            <div className="p-6">
+              <p className="text-black">
+                Nenhum registro de auditoria encontrado.
+              </p>
             </div>
+          )}
 
-
-          ) : auditorias.length === 0 ? (
-
-            <div className="p-8 text-center text-gray-500">
-              Nenhum registro encontrado.
-            </div>
-
-
-          ) : (
-
-
+        {/* REGISTROS */}
+        {!carregando &&
+          !erro &&
+          auditorias.length > 0 && (
             <div className="overflow-x-auto">
 
+              <table className="w-full text-left text-black">
 
-              <table className="w-full">
-
-
-                <thead className="bg-[#f3f1eb] text-[#1d3557]">
-
+                <thead className="bg-gray-50 text-sm text-gray-700">
                   <tr>
 
-                    <th className="p-4 text-left">
+                    <th className="px-6 py-4 font-semibold">
                       Data
                     </th>
 
-                    <th className="p-4 text-left">
+                    <th className="px-6 py-4 font-semibold">
                       Usuário
                     </th>
 
-                    <th className="p-4 text-left">
+                    <th className="px-6 py-4 font-semibold">
                       Ação
                     </th>
 
-                    <th className="p-4 text-left">
+                    <th className="px-6 py-4 font-semibold">
                       Tabela
                     </th>
 
-                    <th className="p-4 text-left">
+                    <th className="px-6 py-4 font-semibold">
+                      Registro
+                    </th>
+
+                    <th className="px-6 py-4 font-semibold">
                       Detalhes
                     </th>
 
                   </tr>
-
                 </thead>
 
+                <tbody className="bg-white">
 
-
-                <tbody>
-
-
-                  {auditorias.map((item)=>(
+                  {auditorias.map((item, index) => (
 
                     <tr
-                      key={item.id_auditoria}
-                      className="border-b hover:bg-[#fbfaf7]"
+                      key={item.id_auditoria ?? index}
+                      className="border-t border-gray-200 hover:bg-gray-50"
                     >
 
-
-                      <td className="p-4 text-sm">
+                      {/* DATA */}
+                      <td className="whitespace-nowrap px-6 py-4 text-black">
                         {formatarData(item.data_hora)}
                       </td>
 
-
-                      <td className="p-4">
-                        {item.tipo_usuario}
+                      {/* USUÁRIO */}
+                      <td className="px-6 py-4 text-black">
+                        <div className="font-semibold">
+                          {formatarUsuario(
+                            item.tipo_usuario,
+                            item.id_usuario
+                          )}
+                        </div>
                       </td>
 
-
-                      <td className="p-4 font-semibold text-[#1d3557]">
-                        {item.acao}
+                      {/* AÇÃO */}
+                      <td className="px-6 py-4 font-semibold text-black">
+                        {item.acao || "-"}
                       </td>
 
-
-                      <td className="p-4">
-                        {item.tabela_afetada}
+                      {/* TABELA */}
+                      <td className="px-6 py-4 text-black">
+                        {item.tabela_afetada || "-"}
                       </td>
 
-
-                      <td className="p-4 text-gray-600">
-                        {item.detalhes}
+                      {/* REGISTRO */}
+                      <td className="px-6 py-4 text-black">
+                        {item.registro_id ?? "-"}
                       </td>
 
+                      {/* DETALHES */}
+                      <td className="max-w-md px-6 py-4 text-black">
+                        {item.detalhes || "-"}
+                      </td>
 
                     </tr>
 
-
                   ))}
-
 
                 </tbody>
 
-
               </table>
 
-
             </div>
-
-
           )}
 
-
-        </div>
-
-
       </div>
-
-
-    </main>
-
+    </div>
   );
-
 }

@@ -2,7 +2,6 @@ import pool from "@/lib/db";
 
 export async function GET() {
   try {
-
     const resultado = await pool.query(`
       SELECT
         id_auditoria,
@@ -18,23 +17,21 @@ export async function GET() {
       LIMIT 100
     `);
 
+    console.log("AUDITORIA:", resultado.rows);
 
     return Response.json(resultado.rows);
 
-
-  } catch(error) {
-
+  } catch (error) {
     console.error("Erro auditoria:", error);
-
 
     return Response.json(
       {
-        erro:"Erro ao buscar auditoria."
+        erro: "Erro ao buscar auditoria.",
+        mensagem: error.message,
       },
       {
-        status:500
+        status: 500,
       }
     );
-
   }
 }
