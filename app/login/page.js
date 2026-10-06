@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
 /* =========================================================
    UTILITÁRIOS
    ========================================================= */
 
-// Lê o JSON sem quebrar caso a API devolva HTML ou texto (ex.: erro 500)
+// Lê o JSON sem quebrar caso a API devolva HTML ou texto
 async function lerJson(resposta) {
   try {
     return await resposta.json();
@@ -37,7 +38,7 @@ function salvarLocal(chave, valor) {
   try {
     localStorage.setItem(chave, String(valor));
   } catch {
-    // localStorage indisponível (modo privado, por exemplo)
+    // localStorage indisponível
   }
 }
 
@@ -81,6 +82,24 @@ function formatarCPF(valor) {
   return cpf;
 }
 
+// Confere se DD/MM/AAAA é uma data real (rejeita 99/99/9999, 31/02/2000 etc.)
+function dataNascimentoValida(valor) {
+  const [dia, mes, ano] = valor.split("/").map(Number);
+
+  if (!dia || !mes || !ano || ano < 1900) {
+    return false;
+  }
+
+  const data = new Date(ano, mes - 1, dia);
+
+  return (
+    data.getFullYear() === ano &&
+    data.getMonth() === mes - 1 &&
+    data.getDate() === dia &&
+    data <= new Date()
+  );
+}
+
 /* =========================================================
    PÁGINA
    ========================================================= */
@@ -100,7 +119,6 @@ export default function Login() {
   async function entrar(e) {
     e.preventDefault();
 
-    // Evita envio duplicado (duplo clique)
     if (carregando) {
       return;
     }
@@ -110,14 +128,13 @@ export default function Login() {
       return;
     }
 
-    // CPF e data de nascimento completos para paciente e profissional
     if (!ehAdmin) {
       if (usuario.replace(/\D/g, "").length !== 11) {
         alert("CPF inválido. Informe os 11 dígitos.");
         return;
       }
 
-      if (senha.replace(/\D/g, "").length !== 8) {
+      if (!dataNascimentoValida(senha)) {
         alert("Data de nascimento inválida. Use o formato DD/MM/AAAA.");
         return;
       }
@@ -187,11 +204,10 @@ export default function Login() {
           return;
         }
 
-        alert(
-          estagiario.resultado?.erro ||
-            psicologo.resultado?.erro ||
-            "Usuário ou senha inválidos."
-        );
+        // Mensagem genérica: a última API consultada (estagiário) responderia
+        // "não encontrado" mesmo para um psicólogo que errou a senha, e
+        // mensagens diferentes revelariam se o CPF existe no sistema.
+        alert("Usuário ou senha inválidos.");
         return;
       }
 
@@ -218,7 +234,6 @@ export default function Login() {
 
       alert("Erro ao realizar login. Verifique sua conexão e tente novamente.");
     } finally {
-      // Em caso de sucesso, mantém o botão travado até a navegação terminar
       if (!loginConcluido) {
         setCarregando(false);
       }
@@ -266,12 +281,16 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-[#f5f1eb] flex items-center justify-center p-4">
       <div className="w-full max-w-5xl bg-white rounded-[34px] overflow-hidden shadow-2xl grid md:grid-cols-2">
-        {/* IMAGEM */}
+        {/* =====================================================
+            IMAGEM
+        ===================================================== */}
         <div className="hidden md:block relative min-h-[680px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/login-clinica.jpg.png"
-            alt="Clínica Psi"
-            className="w-full h-full object-cover"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover"
           />
 
           <div className="absolute inset-0 bg-black/20" />
@@ -287,10 +306,32 @@ export default function Login() {
           </div>
         </div>
 
-        {/* LOGIN */}
+        {/* =====================================================
+            LOGIN
+        ===================================================== */}
         <div className="flex items-center justify-center p-8 md:p-14">
           <div className="w-full max-w-md text-center">
-            <div className="text-[#1d3557] text-5xl mb-4">Ψ</div>
+            {/* VOLTAR PARA O INÍCIO */}
+            <div className="mb-8 flex justify-start">
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                className="group inline-flex items-center gap-2 rounded-full border border-[#1d3557]/10 bg-[#f8f7f4] px-4 py-2 text-sm font-medium text-[#1d3557]/70 transition duration-300 hover:border-[#1d3557]/20 hover:bg-white hover:text-[#1d3557]"
+              >
+                <ArrowLeft
+                  size={16}
+                  aria-hidden="true"
+                  className="transition-transform duration-300 group-hover:-translate-x-1"
+                />
+
+                Voltar para o início
+              </button>
+            </div>
+
+            {/* LOGO */}
+            <div className="text-[#1d3557] text-5xl mb-4" aria-hidden="true">
+              Ψ
+            </div>
 
             <h1 className="text-5xl font-serif text-[#1d3557] mb-2">
               Clínica Psi
