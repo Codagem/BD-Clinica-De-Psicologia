@@ -3,6 +3,88 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+/* =========================================================
+   UTILITÁRIOS
+   ========================================================= */
+
+// Lê o JSON sem quebrar caso a API devolva HTML ou texto (ex.: erro 500)
+async function lerJson(resposta) {
+  try {
+    return await resposta.json();
+  } catch {
+    return null;
+  }
+}
+
+// Envia as credenciais e devolve um resultado padronizado
+async function enviarLogin(url, usuario, senha) {
+  const resposta = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ usuario, senha }),
+  });
+
+  const resultado = await lerJson(resposta);
+
+  return {
+    sucesso: resposta.ok && !!resultado && !resultado.erro,
+    resultado,
+    status: resposta.status,
+  };
+}
+
+function salvarLocal(chave, valor) {
+  try {
+    localStorage.setItem(chave, String(valor));
+  } catch {
+    // localStorage indisponível (modo privado, por exemplo)
+  }
+}
+
+function removerLocal(...chaves) {
+  try {
+    chaves.forEach((chave) => localStorage.removeItem(chave));
+  } catch {
+    // ignora
+  }
+}
+
+function formatarData(valor) {
+  let data = valor.replace(/\D/g, "").slice(0, 8);
+
+  if (data.length > 2) {
+    data = data.slice(0, 2) + "/" + data.slice(2);
+  }
+
+  if (data.length > 5) {
+    data = data.slice(0, 5) + "/" + data.slice(5);
+  }
+
+  return data;
+}
+
+function formatarCPF(valor) {
+  let cpf = valor.replace(/\D/g, "").slice(0, 11);
+
+  if (cpf.length > 3) {
+    cpf = cpf.slice(0, 3) + "." + cpf.slice(3);
+  }
+
+  if (cpf.length > 7) {
+    cpf = cpf.slice(0, 7) + "." + cpf.slice(7);
+  }
+
+  if (cpf.length > 11) {
+    cpf = cpf.slice(0, 11) + "-" + cpf.slice(11);
+  }
+
+  return cpf;
+}
+
+/* =========================================================
+   PÁGINA
+   ========================================================= */
+
 export default function Login() {
   const router = useRouter();
 
@@ -11,272 +93,153 @@ export default function Login() {
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
 
-  // =========================================
-  // FORMATAR DATA
-  // =========================================
+  const ehAdmin = tipoAcesso === "admin";
 
-  function formatarData(valor) {
-    let data = valor.replace(/\D/g, "");
-
-    if (data.length > 2) {
-      data = data.slice(0, 2) + "/" + data.slice(2);
-    }
-
-    if (data.length > 5) {
-      data = data.slice(0, 5) + "/" + data.slice(5);
-    }
-
-    return data.slice(0, 10);
-  }
-
-  // =========================================
-  // FORMATAR CPF
-  // =========================================
-
-  function formatarCPF(valor) {
-    let cpf = valor.replace(/\D/g, "");
-
-    if (cpf.length > 3) {
-      cpf = cpf.slice(0, 3) + "." + cpf.slice(3);
-    }
-
-    if (cpf.length > 7) {
-      cpf = cpf.slice(0, 7) + "." + cpf.slice(7);
-    }
-
-    if (cpf.length > 11) {
-      cpf = cpf.slice(0, 11) + "-" + cpf.slice(11);
-    }
-
-    return cpf.slice(0, 14);
-  }
-
-  // =========================================
-  // ENTRAR
-  // =========================================
+  /* ---------- ENTRAR ---------- */
 
   async function entrar(e) {
     e.preventDefault();
+
+    // Evita envio duplicado (duplo clique)
+    if (carregando) {
+      return;
+    }
 
     if (!usuario.trim() || !senha.trim()) {
       alert("Preencha os campos.");
       return;
     }
 
-    setCarregando(true);
-
-    try {
-      // =========================================
-      // ADMINISTRADOR
-      // =========================================
-
-      if (tipoAcesso === "admin") {
-        const respostaAdmin = await fetch(
-          "/api/login-admin",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              usuario,
-              senha,
-            }),
-          }
-        );
-
-        const resultadoAdmin =
-          await respostaAdmin.json();
-
-        if (resultadoAdmin.erro) {
-          alert(
-            resultadoAdmin.erro ||
-              "Usuário ou senha de administrador inválidos."
-          );
-
-          setCarregando(false);
-          return;
-        }
-
-        localStorage.setItem("logado", "true");
-        localStorage.setItem(
-          "tipo_usuario",
-          "admin"
-        );
-
-        localStorage.removeItem("id_paciente");
-        localStorage.removeItem("id_psicologo");
-        localStorage.removeItem("id_estagiario");
-
-        router.push("/");
+    // CPF e data de nascimento completos para paciente e profissional
+    if (!ehAdmin) {
+      if (usuario.replace(/\D/g, "").length !== 11) {
+        alert("CPF inválido. Informe os 11 dígitos.");
         return;
       }
 
-      // =========================================
-      // ÁREA PROFISSIONAL
-      // PSICÓLOGO OU ESTAGIÁRIO
-      // =========================================
+      if (senha.replace(/\D/g, "").length !== 8) {
+        alert("Data de nascimento inválida. Use o formato DD/MM/AAAA.");
+        return;
+      }
+    }
+
+    setCarregando(true);
+
+    let loginConcluido = false;
+
+    try {
+      /* ===== ADMINISTRADOR ===== */
+
+      if (ehAdmin) {
+        const admin = await enviarLogin("/api/login-admin", usuario, senha);
+
+        if (!admin.sucesso) {
+          alert(
+            admin.resultado?.erro ||
+              "Usuário ou senha de administrador inválidos."
+          );
+          return;
+        }
+
+        salvarLocal("logado", "true");
+        salvarLocal("tipo_usuario", "admin");
+        removerLocal("id_paciente", "id_psicologo", "id_estagiario");
+
+        loginConcluido = true;
+        router.push("/admin");
+        return;
+      }
+
+      /* ===== PSICÓLOGO OU ESTAGIÁRIO ===== */
 
       if (tipoAcesso === "profissional") {
-        // -----------------------------------------
-        // TENTA PSICÓLOGO
-        // -----------------------------------------
-
-        const respostaPsicologo = await fetch(
+        const psicologo = await enviarLogin(
           "/api/login-psicologo",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              usuario,
-              senha,
-            }),
-          }
+          usuario,
+          senha
         );
 
-        const resultadoPsicologo =
-          await respostaPsicologo.json();
+        if (psicologo.sucesso) {
+          salvarLocal("logado", "true");
+          salvarLocal("tipo_usuario", "psicologo");
+          salvarLocal("id_psicologo", psicologo.resultado.id_psicologo);
+          removerLocal("id_paciente", "id_estagiario");
 
-        if (!resultadoPsicologo.erro) {
-          localStorage.setItem("logado", "true");
-          localStorage.setItem(
-            "tipo_usuario",
-            "psicologo"
-          );
-
-          localStorage.setItem(
-            "id_psicologo",
-            resultadoPsicologo.id_psicologo
-          );
-
-          localStorage.removeItem("id_paciente");
-          localStorage.removeItem("id_estagiario");
-
+          loginConcluido = true;
           router.push("/psicologo");
           return;
         }
 
-        // -----------------------------------------
-        // TENTA ESTAGIÁRIO
-        // -----------------------------------------
-
-        const respostaEstagiario = await fetch(
+        const estagiario = await enviarLogin(
           "/api/login-estagiario",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              usuario,
-              senha,
-            }),
-          }
+          usuario,
+          senha
         );
 
-        const resultadoEstagiario =
-          await respostaEstagiario.json();
+        if (estagiario.sucesso) {
+          salvarLocal("logado", "true");
+          salvarLocal("tipo_usuario", "estagiario");
+          salvarLocal("id_estagiario", estagiario.resultado.id_estagiario);
+          removerLocal("id_paciente", "id_psicologo");
 
-        if (!resultadoEstagiario.erro) {
-          localStorage.setItem("logado", "true");
-          localStorage.setItem(
-            "tipo_usuario",
-            "estagiario"
-          );
-
-          localStorage.setItem(
-            "id_estagiario",
-            resultadoEstagiario.id_estagiario
-          );
-
-          localStorage.removeItem("id_paciente");
-          localStorage.removeItem("id_psicologo");
-
+          loginConcluido = true;
           router.push("/estagiario");
           return;
         }
 
         alert(
-          resultadoEstagiario.erro ||
-            resultadoPsicologo.erro ||
-            "CPF ou data de nascimento inválidos."
+          estagiario.resultado?.erro ||
+            psicologo.resultado?.erro ||
+            "Usuário ou senha inválidos."
         );
-
-        setCarregando(false);
         return;
       }
 
-      // =========================================
-      // PACIENTE
-      // =========================================
+      /* ===== PACIENTE ===== */
 
-      const respostaPaciente = await fetch(
-        "/api/login-paciente",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            usuario,
-            senha,
-          }),
-        }
-      );
+      const paciente = await enviarLogin("/api/login-paciente", usuario, senha);
 
-      const resultadoPaciente =
-        await respostaPaciente.json();
-
-      if (resultadoPaciente.erro) {
+      if (!paciente.sucesso) {
         alert(
-          resultadoPaciente.erro ||
-            "CPF ou data de nascimento inválidos."
+          paciente.resultado?.erro || "CPF ou data de nascimento inválidos."
         );
-
-        setCarregando(false);
         return;
       }
 
-      localStorage.setItem("logado", "true");
-      localStorage.setItem(
-        "tipo_usuario",
-        "paciente"
-      );
+      salvarLocal("logado", "true");
+      salvarLocal("tipo_usuario", "paciente");
+      salvarLocal("id_paciente", paciente.resultado.id_paciente);
+      removerLocal("id_psicologo", "id_estagiario");
 
-      localStorage.setItem(
-        "id_paciente",
-        resultadoPaciente.id_paciente
-      );
-
-      localStorage.removeItem("id_psicologo");
-      localStorage.removeItem("id_estagiario");
-
+      loginConcluido = true;
       router.push("/cliente");
     } catch (error) {
       console.error("Erro no login:", error);
 
-      alert("Erro ao realizar login.");
-
-      setCarregando(false);
+      alert("Erro ao realizar login. Verifique sua conexão e tente novamente.");
+    } finally {
+      // Em caso de sucesso, mantém o botão travado até a navegação terminar
+      if (!loginConcluido) {
+        setCarregando(false);
+      }
     }
   }
 
-  // =========================================
-  // SUPORTE
-  // =========================================
+  /* ---------- SUPORTE ---------- */
 
   function abrirSuporte() {
+    const mensagem = encodeURIComponent(
+      "Olá, preciso de suporte para acessar o sistema da clínica."
+    );
+
     window.open(
-      "https://wa.me/5581999875045?text=Olá,%20preciso%20de%20suporte%20para%20acessar%20o%20sistema%20da%20clínica.",
-      "_blank"
+      `https://wa.me/5581999875045?text=${mensagem}`,
+      "_blank",
+      "noopener,noreferrer"
     );
   }
 
-  // =========================================
-  // ALTERAR TIPO DE ACESSO
-  // =========================================
+  /* ---------- ALTERAR TIPO DE ACESSO ---------- */
 
   function selecionarAcesso(tipo) {
     setTipoAcesso(tipo);
@@ -284,42 +247,26 @@ export default function Login() {
     setSenha("");
   }
 
-  // =========================================
-  // TÍTULOS
-  // =========================================
+  /* ---------- TEXTOS DOS CAMPOS ---------- */
 
-  const tituloCampoUsuario =
-    tipoAcesso === "admin"
-      ? "Usuário"
-      : "CPF";
+  const tituloCampoUsuario = ehAdmin ? "Usuário" : "CPF";
+  const placeholderUsuario = ehAdmin ? "Digite seu usuário" : "Digite seu CPF";
+  const tituloSenha = ehAdmin ? "Senha" : "Data de nascimento";
+  const placeholderSenha = ehAdmin ? "Digite sua senha" : "DD/MM/AAAA";
 
-  const placeholderUsuario =
-    tipoAcesso === "admin"
-      ? "Digite seu usuário"
-      : "Digite seu CPF";
+  const classeBotaoTipo = (ativo) =>
+    `p-3 rounded-2xl border transition ${
+      ativo
+        ? "bg-[#1d3557] text-white border-[#1d3557]"
+        : "bg-white text-[#1d3557] border-gray-200 hover:border-[#1d3557]"
+    }`;
 
-  const tituloSenha =
-    tipoAcesso === "admin"
-      ? "Senha"
-      : "Data de nascimento";
-
-  const placeholderSenha =
-    tipoAcesso === "admin"
-      ? "Digite sua senha"
-      : "DD/MM/AAAA";
-
-  // =========================================
-  // TELA
-  // =========================================
+  /* ---------- TELA ---------- */
 
   return (
     <div className="min-h-screen bg-[#f5f1eb] flex items-center justify-center p-4">
       <div className="w-full max-w-5xl bg-white rounded-[34px] overflow-hidden shadow-2xl grid md:grid-cols-2">
-
-        {/* =========================================
-            IMAGEM
-        ========================================= */}
-
+        {/* IMAGEM */}
         <div className="hidden md:block relative min-h-[680px]">
           <img
             src="/login-clinica.jpg.png"
@@ -340,167 +287,109 @@ export default function Login() {
           </div>
         </div>
 
-        {/* =========================================
-            LOGIN
-        ========================================= */}
-
+        {/* LOGIN */}
         <div className="flex items-center justify-center p-8 md:p-14">
           <div className="w-full max-w-md text-center">
-
-            <div className="text-[#1d3557] text-5xl mb-4">
-              Ψ
-            </div>
+            <div className="text-[#1d3557] text-5xl mb-4">Ψ</div>
 
             <h1 className="text-5xl font-serif text-[#1d3557] mb-2">
               Clínica Psi
             </h1>
 
-            <p className="text-gray-500 mb-8">
-              Acesso ao sistema da clínica
-            </p>
+            <p className="text-gray-500 mb-8">Acesso ao sistema da clínica</p>
 
-            {/* =========================================
-                FORMULÁRIO
-            ========================================= */}
-
-            <form
-              onSubmit={entrar}
-              className="space-y-5 text-left"
-            >
-
+            {/* FORMULÁRIO */}
+            <form onSubmit={entrar} className="space-y-5 text-left">
               {/* USUÁRIO / CPF */}
-
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">
+                <label
+                  htmlFor="usuario"
+                  className="block text-sm font-medium text-gray-600 mb-2"
+                >
                   {tituloCampoUsuario}
                 </label>
 
                 <input
+                  id="usuario"
                   type="text"
-                  inputMode={
-                    tipoAcesso === "admin"
-                      ? "text"
-                      : "numeric"
-                  }
+                  inputMode={ehAdmin ? "text" : "numeric"}
+                  autoComplete={ehAdmin ? "username" : "off"}
                   placeholder={placeholderUsuario}
                   value={usuario}
-                  onChange={(e) => {
-                    if (tipoAcesso === "admin") {
-                      setUsuario(e.target.value);
-                    } else {
-                      setUsuario(
-                        formatarCPF(e.target.value)
-                      );
-                    }
-                  }}
+                  maxLength={ehAdmin ? 50 : 14}
+                  onChange={(e) =>
+                    setUsuario(
+                      ehAdmin ? e.target.value : formatarCPF(e.target.value)
+                    )
+                  }
                   className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white outline-none focus:border-[#2b4c7e] transition"
                 />
               </div>
 
               {/* SENHA / DATA */}
-
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">
+                <label
+                  htmlFor="senha"
+                  className="block text-sm font-medium text-gray-600 mb-2"
+                >
                   {tituloSenha}
                 </label>
 
                 <input
-                  type={
-                    tipoAcesso === "admin"
-                      ? "password"
-                      : "text"
-                  }
-                  inputMode={
-                    tipoAcesso === "admin"
-                      ? "text"
-                      : "numeric"
-                  }
+                  id="senha"
+                  type={ehAdmin ? "password" : "text"}
+                  inputMode={ehAdmin ? "text" : "numeric"}
+                  autoComplete={ehAdmin ? "current-password" : "off"}
                   placeholder={placeholderSenha}
                   value={senha}
-                  maxLength={
-                    tipoAcesso === "admin"
-                      ? 50
-                      : 10
+                  maxLength={ehAdmin ? 50 : 10}
+                  onChange={(e) =>
+                    setSenha(
+                      ehAdmin ? e.target.value : formatarData(e.target.value)
+                    )
                   }
-                  onChange={(e) => {
-                    if (tipoAcesso === "admin") {
-                      setSenha(e.target.value);
-                    } else {
-                      setSenha(
-                        formatarData(e.target.value)
-                      );
-                    }
-                  }}
                   className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white outline-none focus:border-[#2b4c7e] transition"
                 />
               </div>
 
               {/* ENTRAR */}
-
               <button
                 type="submit"
                 disabled={carregando}
-                className="w-full bg-[#2b4c7e] hover:bg-[#244267] text-white rounded-2xl p-4 font-semibold transition disabled:opacity-60"
+                className="w-full bg-[#2b4c7e] hover:bg-[#244267] text-white rounded-2xl p-4 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {carregando
-                  ? "Entrando..."
-                  : "Entrar"}
+                {carregando ? "Entrando..." : "Entrar"}
               </button>
             </form>
 
-            {/* =========================================
-                TIPO DE ACESSO
-            ========================================= */}
-
+            {/* TIPO DE ACESSO */}
             <div className="mt-8">
-
-              <p className="text-sm text-gray-500 mb-3">
-                Acessar como
-              </p>
+              <p className="text-sm text-gray-500 mb-3">Acessar como</p>
 
               <div className="grid grid-cols-2 gap-3">
-
-                {/* ADMINISTRADOR */}
-
                 <button
                   type="button"
-                  onClick={() =>
-                    selecionarAcesso("admin")
-                  }
-                  className={`p-3 rounded-2xl border transition ${
-                    tipoAcesso === "admin"
-                      ? "bg-[#1d3557] text-white border-[#1d3557]"
-                      : "bg-white text-[#1d3557] border-gray-200 hover:border-[#1d3557]"
-                  }`}
+                  onClick={() => selecionarAcesso("admin")}
+                  aria-pressed={tipoAcesso === "admin"}
+                  className={classeBotaoTipo(tipoAcesso === "admin")}
                 >
                   Administrador
                 </button>
 
-                {/* PROFISSIONAL */}
-
                 <button
                   type="button"
-                  onClick={() =>
-                    selecionarAcesso("profissional")
-                  }
-                  className={`p-3 rounded-2xl border transition ${
-                    tipoAcesso === "profissional"
-                      ? "bg-[#1d3557] text-white border-[#1d3557]"
-                      : "bg-white text-[#1d3557] border-gray-200 hover:border-[#1d3557]"
-                  }`}
+                  onClick={() => selecionarAcesso("profissional")}
+                  aria-pressed={tipoAcesso === "profissional"}
+                  className={classeBotaoTipo(tipoAcesso === "profissional")}
                 >
                   Psicólogo / Estagiário
                 </button>
-
               </div>
-
-              {/* PACIENTE */}
 
               <button
                 type="button"
-                onClick={() =>
-                  selecionarAcesso("paciente")
-                }
+                onClick={() => selecionarAcesso("paciente")}
+                aria-pressed={tipoAcesso === "paciente"}
                 className={`w-full mt-3 p-3 rounded-2xl border transition ${
                   tipoAcesso === "paciente"
                     ? "bg-[#f8f7f4] text-[#1d3557] border-[#1d3557]/30"
@@ -509,13 +398,9 @@ export default function Login() {
               >
                 Paciente
               </button>
-
             </div>
 
-            {/* =========================================
-                SUPORTE
-            ========================================= */}
-
+            {/* SUPORTE */}
             <button
               type="button"
               onClick={abrirSuporte}
@@ -524,21 +409,29 @@ export default function Login() {
               Esqueci minha senha
             </button>
 
-            {/* =========================================
-                ACESSO RESTRITO
-            ========================================= */}
+            {/* CADASTRO DO PACIENTE */}
+            <div className="mt-5 text-center">
+              <p className="text-sm text-gray-500">Ainda não possui cadastro?</p>
 
+              <button
+                type="button"
+                onClick={() => router.push("/cadastro")}
+                className="mt-2 text-[#1d3557] font-semibold hover:underline transition"
+              >
+                Cadastre-se como paciente
+              </button>
+            </div>
+
+            {/* ACESSO RESTRITO */}
             <div className="mt-8 bg-[#f8f7f4] rounded-3xl p-5 text-left border border-gray-100">
-
               <p className="text-sm text-gray-500 mb-2 font-semibold">
                 Acesso restrito
               </p>
 
               <p className="text-sm text-gray-600 leading-relaxed">
-                Este sistema é destinado apenas a usuários
-                autorizados da clínica. Para recuperar o
-                acesso ou solicitar suporte, entre em contato
-                com a administração.
+                Este sistema é destinado apenas a usuários autorizados da
+                clínica. Para recuperar o acesso ou solicitar suporte, entre em
+                contato com a administração.
               </p>
 
               <button
@@ -548,15 +441,12 @@ export default function Login() {
               >
                 Falar com suporte
               </button>
-
             </div>
 
             {/* RODAPÉ */}
-
             <p className="text-center text-gray-400 mt-8 text-sm">
               Clínica Psi © Sistema de Gestão Clínica
             </p>
-
           </div>
         </div>
       </div>
