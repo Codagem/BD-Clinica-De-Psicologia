@@ -859,7 +859,7 @@ export default function Consultas() {
 
         <Sidebar />
 
-        <main className="md:ml-64 w-full p-4 pt-20 md:p-10">
+        <main className="min-w-0 w-full md:ml-64 md:w-[calc(100%-16rem)] p-4 pt-20 md:p-8 lg:p-10 overflow-x-hidden">
 
           {/* =====================================
               CABEÇALHO
@@ -884,7 +884,7 @@ export default function Consultas() {
 
             </div>
 
-            <div className="flex flex-col md:flex-row gap-3">
+            <div className="flex w-full flex-col sm:flex-row md:w-auto gap-3">
 
               <button
                 onClick={
@@ -1411,7 +1411,7 @@ export default function Consultas() {
 
             <div className="p-4 md:p-6">
 
-              <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(240px,280px)] gap-6">
 
                 <div className="space-y-3">
 

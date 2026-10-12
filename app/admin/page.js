@@ -50,7 +50,6 @@ export default function Dashboard() {
   receitas: 0,
   despesas: 0,
   lucro: 0,
-  estoqueBaixo: 0,
   consultasSemana: [],
 });
 
@@ -268,12 +267,7 @@ export default function Dashboard() {
                   menor
                 />
 
-                <Card
-                  titulo="Estoque baixo"
-                  valor={dados.estoqueBaixo}
-                  descricao="Itens precisam atenção"
-                  icone={<Package size={26} />}
-                />
+
               </div>
 
               {/* =========================================
@@ -327,8 +321,8 @@ export default function Dashboard() {
                     </div>
 
                     <div className="mt-8 bg-[#f3f1eb] rounded-3xl p-5">
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
+                      <div className="h-64 min-w-0 w-full">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={1}>
                           <BarChart data={dadosGrafico}>
                             <XAxis dataKey="dia" axisLine={false} tickLine={false} />
                             <YAxis axisLine={false} tickLine={false} />

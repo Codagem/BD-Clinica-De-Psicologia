@@ -1,14 +1,16 @@
+
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+
+const SUPORTE_WHATSAPP = "5581999875045";
 
 /* =========================================================
    UTILITÁRIOS
    ========================================================= */
 
-// Lê o JSON sem quebrar caso a API devolva HTML ou texto
 async function lerJson(resposta) {
   try {
     return await resposta.json();
@@ -17,18 +19,22 @@ async function lerJson(resposta) {
   }
 }
 
-// Envia as credenciais e devolve um resultado padronizado
 async function enviarLogin(url, usuario, senha) {
   const resposta = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ usuario, senha }),
   });
 
   const resultado = await lerJson(resposta);
 
   return {
-    sucesso: resposta.ok && !!resultado && !resultado.erro,
+    sucesso:
+      resposta.ok &&
+      !!resultado &&
+      !resultado.erro,
     resultado,
     status: resposta.status,
   };
@@ -38,7 +44,7 @@ function salvarLocal(chave, valor) {
   try {
     localStorage.setItem(chave, String(valor));
   } catch {
-    // localStorage indisponível
+    // LocalStorage indisponível.
   }
 }
 
@@ -46,45 +52,65 @@ function removerLocal(...chaves) {
   try {
     chaves.forEach((chave) => localStorage.removeItem(chave));
   } catch {
-    // ignora
+    // Ignora indisponibilidade do LocalStorage.
   }
-}
-
-function formatarData(valor) {
-  let data = valor.replace(/\D/g, "").slice(0, 8);
-
-  if (data.length > 2) {
-    data = data.slice(0, 2) + "/" + data.slice(2);
-  }
-
-  if (data.length > 5) {
-    data = data.slice(0, 5) + "/" + data.slice(5);
-  }
-
-  return data;
 }
 
 function formatarCPF(valor) {
-  let cpf = valor.replace(/\D/g, "").slice(0, 11);
+  const cpf = valor.replace(/\D/g, "").slice(0, 11);
 
-  if (cpf.length > 3) {
-    cpf = cpf.slice(0, 3) + "." + cpf.slice(3);
+  if (cpf.length <= 3) return cpf;
+
+  if (cpf.length <= 6) {
+    return `${cpf.slice(0, 3)}.${cpf.slice(3)}`;
   }
 
-  if (cpf.length > 7) {
-    cpf = cpf.slice(0, 7) + "." + cpf.slice(7);
+  if (cpf.length <= 9) {
+    return `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6)}`;
   }
 
-  if (cpf.length > 11) {
-    cpf = cpf.slice(0, 11) + "-" + cpf.slice(11);
-  }
-
-  return cpf;
+  return `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(
+    6,
+    9
+  )}-${cpf.slice(9)}`;
 }
 
-// Confere se DD/MM/AAAA é uma data real (rejeita 99/99/9999, 31/02/2000 etc.)
+function validarCPF(valor) {
+  const cpf = valor.replace(/\D/g, "");
+
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) {
+    return false;
+  }
+
+  const calcularDigito = (base, pesoInicial) => {
+    const soma = base
+      .split("")
+      .reduce(
+        (total, numero, indice) =>
+          total + Number(numero) * (pesoInicial - indice),
+        0
+      );
+
+    const resto = (soma * 10) % 11;
+
+    return resto === 10 ? 0 : resto;
+  };
+
+  const primeiroDigito = calcularDigito(cpf.slice(0, 9), 10);
+  const segundoDigito = calcularDigito(cpf.slice(0, 10), 11);
+
+  return (
+    primeiroDigito === Number(cpf[9]) &&
+    segundoDigito === Number(cpf[10])
+  );
+}
+
 function dataNascimentoValida(valor) {
-  const [dia, mes, ano] = valor.split("/").map(Number);
+  const partes = valor.split("/");
+
+  if (partes.length !== 3) return false;
+
+  const [dia, mes, ano] = partes.map(Number);
 
   if (!dia || !mes || !ano || ano < 1900) {
     return false;
@@ -100,8 +126,16 @@ function dataNascimentoValida(valor) {
   );
 }
 
+function mascararData(valor) {
+  return valor
+    .replace(/\D/g, "")
+    .slice(0, 8)
+    .replace(/^(\d{2})(\d)/, "$1/$2")
+    .replace(/^(\d{2}\/\d{2})(\d)/, "$1/$2");
+}
+
 /* =========================================================
-   PÁGINA
+   PÁGINA DE LOGIN
    ========================================================= */
 
 export default function Login() {
@@ -110,34 +144,38 @@ export default function Login() {
   const [tipoAcesso, setTipoAcesso] = useState("paciente");
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState("");
 
   const ehAdmin = tipoAcesso === "admin";
+  const ehProfissional = tipoAcesso === "profissional";
+  const ehPaciente = tipoAcesso === "paciente";
 
-  /* ---------- ENTRAR ---------- */
+  /* ------------------------- ENTRAR ------------------------- */
 
   async function entrar(e) {
     e.preventDefault();
 
-    if (carregando) {
-      return;
-    }
+    if (carregando) return;
+
+    setErro("");
 
     if (!usuario.trim() || !senha.trim()) {
-      alert("Preencha os campos.");
+      setErro("Preencha os campos.");
       return;
     }
 
-    if (!ehAdmin) {
-      if (usuario.replace(/\D/g, "").length !== 11) {
-        alert("CPF inválido. Informe os 11 dígitos.");
-        return;
-      }
+    if (!ehAdmin && !validarCPF(usuario)) {
+      setErro("CPF inválido. Confira os números digitados.");
+      return;
+    }
 
-      if (!dataNascimentoValida(senha)) {
-        alert("Data de nascimento inválida. Use o formato DD/MM/AAAA.");
-        return;
-      }
+    if (ehPaciente && !dataNascimentoValida(senha)) {
+      setErro(
+        "Data de nascimento inválida. Use o formato DD/MM/AAAA."
+      );
+      return;
     }
 
     setCarregando(true);
@@ -145,31 +183,42 @@ export default function Login() {
     let loginConcluido = false;
 
     try {
-      /* ===== ADMINISTRADOR ===== */
+      /* ---------------- ADMINISTRADOR ---------------- */
 
       if (ehAdmin) {
-        const admin = await enviarLogin("/api/login-admin", usuario, senha);
+        const admin = await enviarLogin(
+          "/api/login-admin",
+          usuario.trim(),
+          senha
+        );
 
         if (!admin.sucesso) {
-          alert(
-            admin.resultado?.erro ||
-              "Usuário ou senha de administrador inválidos."
+          setErro(
+            admin.status >= 500
+              ? "Serviço indisponível no momento. Tente novamente."
+              : admin.resultado?.erro ||
+                  "Usuário ou senha de administrador inválidos."
           );
           return;
         }
 
         salvarLocal("logado", "true");
         salvarLocal("tipo_usuario", "admin");
-        removerLocal("id_paciente", "id_psicologo", "id_estagiario");
+
+        removerLocal(
+          "id_paciente",
+          "id_psicologo",
+          "id_estagiario"
+        );
 
         loginConcluido = true;
-        router.push("/admin");
+        router.replace("/admin");
         return;
       }
 
-      /* ===== PSICÓLOGO OU ESTAGIÁRIO ===== */
+      /* ------------- PSICÓLOGO OU ESTAGIÁRIO ------------- */
 
-      if (tipoAcesso === "profissional") {
+      if (ehProfissional) {
         const psicologo = await enviarLogin(
           "/api/login-psicologo",
           usuario,
@@ -179,11 +228,28 @@ export default function Login() {
         if (psicologo.sucesso) {
           salvarLocal("logado", "true");
           salvarLocal("tipo_usuario", "psicologo");
-          salvarLocal("id_psicologo", psicologo.resultado.id_psicologo);
+
+          salvarLocal(
+            "id_psicologo",
+            psicologo.resultado.id_psicologo
+          );
+
           removerLocal("id_paciente", "id_estagiario");
 
           loginConcluido = true;
-          router.push("/psicologo");
+
+          /*
+           * Primeiro acesso ou troca obrigatória:
+           * encaminha para criar uma senha pessoal.
+           */
+          if (
+            psicologo.resultado.precisaTrocarSenha === true
+          ) {
+            router.replace("/psicologo/alterar-senha");
+          } else {
+            router.replace("/psicologo");
+          }
+
           return;
         }
 
@@ -196,43 +262,75 @@ export default function Login() {
         if (estagiario.sucesso) {
           salvarLocal("logado", "true");
           salvarLocal("tipo_usuario", "estagiario");
-          salvarLocal("id_estagiario", estagiario.resultado.id_estagiario);
+
+          salvarLocal(
+            "id_estagiario",
+            estagiario.resultado.id_estagiario
+          );
+
           removerLocal("id_paciente", "id_psicologo");
 
           loginConcluido = true;
-          router.push("/estagiario");
+          router.replace("/estagiario");
           return;
         }
 
-        // Mensagem genérica: a última API consultada (estagiário) responderia
-        // "não encontrado" mesmo para um psicólogo que errou a senha, e
-        // mensagens diferentes revelariam se o CPF existe no sistema.
-        alert("Usuário ou senha inválidos.");
+        if (
+          psicologo.status >= 500 ||
+          estagiario.status >= 500
+        ) {
+          setErro(
+            "Serviço indisponível no momento. Tente novamente."
+          );
+          return;
+        }
+
+        setErro(
+          psicologo.resultado?.erro &&
+            estagiario.status === 404
+            ? psicologo.resultado.erro
+            : "Usuário ou senha inválidos."
+        );
+
         return;
       }
 
-      /* ===== PACIENTE ===== */
+      /* ---------------------- PACIENTE ---------------------- */
 
-      const paciente = await enviarLogin("/api/login-paciente", usuario, senha);
+      const paciente = await enviarLogin(
+        "/api/login-paciente",
+        usuario,
+        senha
+      );
 
       if (!paciente.sucesso) {
-        alert(
-          paciente.resultado?.erro || "CPF ou data de nascimento inválidos."
+        setErro(
+          paciente.status >= 500
+            ? "Serviço indisponível no momento. Tente novamente."
+            : paciente.resultado?.erro ||
+                "CPF ou data de nascimento inválidos."
         );
         return;
       }
 
       salvarLocal("logado", "true");
       salvarLocal("tipo_usuario", "paciente");
-      salvarLocal("id_paciente", paciente.resultado.id_paciente);
+
+      salvarLocal(
+        "id_paciente",
+        paciente.resultado.id_paciente
+      );
+
       removerLocal("id_psicologo", "id_estagiario");
 
       loginConcluido = true;
-      router.push("/cliente");
+      router.replace("/cliente");
     } catch (error) {
       console.error("Erro no login:", error);
 
-      alert("Erro ao realizar login. Verifique sua conexão e tente novamente.");
+      setErro(
+        "Erro ao realizar login. Verifique sua conexão e tente novamente."
+      );
     } finally {
       if (!loginConcluido) {
         setCarregando(false);
@@ -240,7 +338,7 @@ export default function Login() {
     }
   }
 
-  /* ---------- SUPORTE ---------- */
+  /* ------------------------ SUPORTE ------------------------ */
 
   function abrirSuporte() {
     const mensagem = encodeURIComponent(
@@ -248,26 +346,41 @@ export default function Login() {
     );
 
     window.open(
-      `https://wa.me/5581999875045?text=${mensagem}`,
+      `https://wa.me/${SUPORTE_WHATSAPP}?text=${mensagem}`,
       "_blank",
       "noopener,noreferrer"
     );
   }
 
-  /* ---------- ALTERAR TIPO DE ACESSO ---------- */
+  /* ------------------- TIPO DE ACESSO ------------------- */
 
   function selecionarAcesso(tipo) {
     setTipoAcesso(tipo);
     setUsuario("");
     setSenha("");
+    setMostrarSenha(false);
+    setErro("");
   }
 
-  /* ---------- TEXTOS DOS CAMPOS ---------- */
+  /* ------------------------ TEXTOS ------------------------ */
 
   const tituloCampoUsuario = ehAdmin ? "Usuário" : "CPF";
-  const placeholderUsuario = ehAdmin ? "Digite seu usuário" : "Digite seu CPF";
-  const tituloSenha = ehAdmin ? "Senha" : "Data de nascimento";
-  const placeholderSenha = ehAdmin ? "Digite sua senha" : "DD/MM/AAAA";
+
+  const placeholderUsuario = ehAdmin
+    ? "Digite seu usuário"
+    : "Digite seu CPF";
+
+  const tituloSenha = ehAdmin
+    ? "Senha"
+    : ehProfissional
+      ? "Senha ou data de nascimento no primeiro acesso"
+      : "Data de nascimento";
+
+  const placeholderSenha = ehAdmin
+    ? "Digite sua senha"
+    : ehProfissional
+      ? "DD/MM/AAAA no primeiro acesso"
+      : "DD/MM/AAAA";
 
   const classeBotaoTipo = (ativo) =>
     `p-3 rounded-2xl border transition ${
@@ -276,14 +389,14 @@ export default function Login() {
         : "bg-white text-[#1d3557] border-gray-200 hover:border-[#1d3557]"
     }`;
 
-  /* ---------- TELA ---------- */
+  /* -------------------------- TELA -------------------------- */
 
   return (
     <div className="min-h-screen bg-[#f5f1eb] flex items-center justify-center p-4">
       <div className="w-full max-w-5xl bg-white rounded-[34px] overflow-hidden shadow-2xl grid md:grid-cols-2">
-        {/* =====================================================
-            IMAGEM
-        ===================================================== */}
+
+        {/* IMAGEM */}
+
         <div className="hidden md:block relative min-h-[680px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -306,12 +419,11 @@ export default function Login() {
           </div>
         </div>
 
-        {/* =====================================================
-            LOGIN
-        ===================================================== */}
+        {/* LOGIN */}
+
         <div className="flex items-center justify-center p-8 md:p-14">
           <div className="w-full max-w-md text-center">
-            {/* VOLTAR PARA O INÍCIO */}
+
             <div className="mb-8 flex justify-start">
               <button
                 type="button"
@@ -323,13 +435,14 @@ export default function Login() {
                   aria-hidden="true"
                   className="transition-transform duration-300 group-hover:-translate-x-1"
                 />
-
                 Voltar para o início
               </button>
             </div>
 
-            {/* LOGO */}
-            <div className="text-[#1d3557] text-5xl mb-4" aria-hidden="true">
+            <div
+              className="text-[#1d3557] text-5xl mb-4"
+              aria-hidden="true"
+            >
               Ψ
             </div>
 
@@ -337,11 +450,17 @@ export default function Login() {
               Clínica Psi
             </h1>
 
-            <p className="text-gray-500 mb-8">Acesso ao sistema da clínica</p>
+            <p className="text-gray-500 mb-8">
+              Acesso ao sistema da clínica
+            </p>
 
-            {/* FORMULÁRIO */}
-            <form onSubmit={entrar} className="space-y-5 text-left">
+            <form
+              onSubmit={entrar}
+              className="space-y-5 text-left"
+              noValidate
+            >
               {/* USUÁRIO / CPF */}
+
               <div>
                 <label
                   htmlFor="usuario"
@@ -358,16 +477,21 @@ export default function Login() {
                   placeholder={placeholderUsuario}
                   value={usuario}
                   maxLength={ehAdmin ? 50 : 14}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    setErro("");
+
                     setUsuario(
-                      ehAdmin ? e.target.value : formatarCPF(e.target.value)
-                    )
-                  }
+                      ehAdmin
+                        ? e.target.value
+                        : formatarCPF(e.target.value)
+                    );
+                  }}
                   className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white outline-none focus:border-[#2b4c7e] transition"
                 />
               </div>
 
-              {/* SENHA / DATA */}
+              {/* SENHA / DATA DE NASCIMENTO */}
+
               <div>
                 <label
                   htmlFor="senha"
@@ -378,22 +502,80 @@ export default function Login() {
 
                 <input
                   id="senha"
-                  type={ehAdmin ? "password" : "text"}
-                  inputMode={ehAdmin ? "text" : "numeric"}
-                  autoComplete={ehAdmin ? "current-password" : "off"}
+                  type={
+                    ehAdmin || ehProfissional
+                      ? mostrarSenha
+                        ? "text"
+                        : "password"
+                      : "text"
+                  }
+                  inputMode={ehPaciente ? "numeric" : "text"}
+                  autoComplete={
+                    ehPaciente ? "off" : "current-password"
+                  }
                   placeholder={placeholderSenha}
                   value={senha}
-                  maxLength={ehAdmin ? 50 : 10}
-                  onChange={(e) =>
-                    setSenha(
-                      ehAdmin ? e.target.value : formatarData(e.target.value)
-                    )
+                  maxLength={
+                    ehProfissional ? 72 : ehAdmin ? 50 : 10
                   }
+                  onChange={(e) => {
+                    setErro("");
+
+                    setSenha(
+                      ehPaciente
+                        ? mascararData(e.target.value)
+                        : e.target.value
+                    );
+                  }}
                   className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white outline-none focus:border-[#2b4c7e] transition"
                 />
+
+                {(ehAdmin || ehProfissional) && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMostrarSenha((anterior) => !anterior)
+                    }
+                    aria-label={
+                      mostrarSenha
+                        ? "Ocultar senha"
+                        : "Mostrar senha"
+                    }
+                    className="mt-2 flex items-center gap-2 text-sm text-gray-500 hover:text-[#1d3557] transition"
+                  >
+                    {mostrarSenha ? (
+                      <EyeOff size={16} />
+                    ) : (
+                      <Eye size={16} />
+                    )}
+
+                    {mostrarSenha
+                      ? "Ocultar senha"
+                      : "Mostrar senha"}
+                  </button>
+                )}
+
+                {ehProfissional && (
+                  <p className="mt-2 text-xs leading-relaxed text-gray-500">
+                    No primeiro acesso do psicólogo, informe sua
+                    data de nascimento no formato DD/MM/AAAA.
+                    Você será encaminhado para cadastrar uma
+                    senha pessoal antes de acessar o painel.
+                  </p>
+                )}
               </div>
 
-              {/* ENTRAR */}
+              {/* ERRO */}
+
+              {erro && (
+                <p
+                  role="alert"
+                  className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+                >
+                  {erro}
+                </p>
+              )}
+
               <button
                 type="submit"
                 disabled={carregando}
@@ -404,15 +586,18 @@ export default function Login() {
             </form>
 
             {/* TIPO DE ACESSO */}
+
             <div className="mt-8">
-              <p className="text-sm text-gray-500 mb-3">Acessar como</p>
+              <p className="text-sm text-gray-500 mb-3">
+                Acessar como
+              </p>
 
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => selecionarAcesso("admin")}
-                  aria-pressed={tipoAcesso === "admin"}
-                  className={classeBotaoTipo(tipoAcesso === "admin")}
+                  aria-pressed={ehAdmin}
+                  className={classeBotaoTipo(ehAdmin)}
                 >
                   Administrador
                 </button>
@@ -420,8 +605,8 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => selecionarAcesso("profissional")}
-                  aria-pressed={tipoAcesso === "profissional"}
-                  className={classeBotaoTipo(tipoAcesso === "profissional")}
+                  aria-pressed={ehProfissional}
+                  className={classeBotaoTipo(ehProfissional)}
                 >
                   Psicólogo / Estagiário
                 </button>
@@ -430,9 +615,9 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => selecionarAcesso("paciente")}
-                aria-pressed={tipoAcesso === "paciente"}
+                aria-pressed={ehPaciente}
                 className={`w-full mt-3 p-3 rounded-2xl border transition ${
-                  tipoAcesso === "paciente"
+                  ehPaciente
                     ? "bg-[#f8f7f4] text-[#1d3557] border-[#1d3557]/30"
                     : "bg-white text-gray-600 border-gray-200 hover:border-[#1d3557]"
                 }`}
@@ -442,6 +627,7 @@ export default function Login() {
             </div>
 
             {/* SUPORTE */}
+
             <button
               type="button"
               onClick={abrirSuporte}
@@ -450,9 +636,12 @@ export default function Login() {
               Esqueci minha senha
             </button>
 
-            {/* CADASTRO DO PACIENTE */}
+            {/* CADASTRO DE PACIENTE */}
+
             <div className="mt-5 text-center">
-              <p className="text-sm text-gray-500">Ainda não possui cadastro?</p>
+              <p className="text-sm text-gray-500">
+                Ainda não possui cadastro?
+              </p>
 
               <button
                 type="button"
@@ -464,15 +653,17 @@ export default function Login() {
             </div>
 
             {/* ACESSO RESTRITO */}
+
             <div className="mt-8 bg-[#f8f7f4] rounded-3xl p-5 text-left border border-gray-100">
               <p className="text-sm text-gray-500 mb-2 font-semibold">
                 Acesso restrito
               </p>
 
               <p className="text-sm text-gray-600 leading-relaxed">
-                Este sistema é destinado apenas a usuários autorizados da
-                clínica. Para recuperar o acesso ou solicitar suporte, entre em
-                contato com a administração.
+                Este sistema é destinado apenas a usuários
+                autorizados da clínica. Para recuperar o acesso
+                ou solicitar suporte, entre em contato com a
+                administração.
               </p>
 
               <button
@@ -484,7 +675,6 @@ export default function Login() {
               </button>
             </div>
 
-            {/* RODAPÉ */}
             <p className="text-center text-gray-400 mt-8 text-sm">
               Clínica Psi © Sistema de Gestão Clínica
             </p>

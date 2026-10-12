@@ -1,86 +1,145 @@
+
 import pool from "@/lib/db";
 import { verificarSessao } from "@/lib/sessao";
+
+/* =========================================================
+   AUTENTICAÇÃO
+   ========================================================= */
 
 async function obterSessao(req) {
   const cookie = req.headers.get("cookie") || "";
 
-  const sessaoCookie = cookie
+  const item = cookie
     .split(";")
-    .find((item) => item.trim().startsWith("sessao="));
+    .find((parte) => parte.trim().startsWith("sessao="));
 
-  const token = sessaoCookie
-    ? sessaoCookie.trim().substring("sessao=".length)
+  const token = item
+    ? item.trim().substring("sessao=".length)
     : null;
+
+  if (!token) return null;
 
   return await verificarSessao(token);
 }
+
+function resposta(erro, status) {
+  return Response.json({ erro }, { status });
+}
+
+function converterId(valor) {
+  const numero = Number(valor);
+
+  return Number.isSafeInteger(numero) && numero > 0
+    ? numero
+    : null;
+}
+
+/* =========================================================
+   GET — ANAMNESES COMPLETAS
+   Administrador: todos os registros.
+   Psicólogo: pacientes com consultas vinculadas.
+   Estagiário: pacientes com vínculo ativo.
+   ========================================================= */
 
 export async function GET(req) {
   try {
     const sessao = await obterSessao(req);
 
-    if (
-      !sessao ||
-      (sessao.tipo_usuario !== "admin" &&
-        sessao.tipo_usuario !== "psicologo" &&
-        sessao.tipo_usuario !== "estagiario")
-    ) {
-      return Response.json(
-        {
-          erro: "Acesso não autorizado.",
-        },
-        { status: 403 }
-      );
+    if (!sessao) {
+      return resposta("Sessão inválida ou expirada.", 401);
     }
 
-    let query = `
-      SELECT
-        v.id_paciente,
-        v.nome_completo,
-        v.idade,
-        v.motivo_consulta,
-        v.tempo_problema,
-        v.ansiedade
-      FROM vw_relatorio_anamnese v
-    `;
+    if (
+      !["admin", "psicologo", "estagiario"].includes(
+        sessao.tipo_usuario
+      )
+    ) {
+      return resposta("Acesso não autorizado.", 403);
+    }
 
-    let parametros = [];
+    let filtro = "";
+    const parametros = [];
 
-    if (sessao.tipo_usuario === "estagiario") {
-      if (!sessao.id_estagiario) {
-        return Response.json(
-          {
-            erro: "Estagiário não identificado.",
-          },
-          { status: 403 }
-        );
+    if (sessao.tipo_usuario === "psicologo") {
+      const idPsicologo = converterId(sessao.id_psicologo);
+
+      if (!idPsicologo) {
+        return resposta("Psicólogo não identificado.", 403);
       }
 
-      query += `
-        INNER JOIN estagiarios_pacientes ep
-          ON ep.id_paciente = v.id_paciente
-        WHERE ep.id_estagiario = $1
-          AND ep.status = 'Ativo'
-      `;
+      parametros.push(idPsicologo);
 
-      parametros = [Number(sessao.id_estagiario)];
+      filtro = `
+        AND EXISTS (
+          SELECT 1
+          FROM consultas c
+          WHERE c.id_paciente = a.id_paciente
+            AND c.id_psicologo = $1
+        )
+      `;
+    } else if (sessao.tipo_usuario === "estagiario") {
+      const idEstagiario = converterId(sessao.id_estagiario);
+
+      if (!idEstagiario) {
+        return resposta("Estagiário não identificado.", 403);
+      }
+
+      parametros.push(idEstagiario);
+
+      filtro = `
+        AND EXISTS (
+          SELECT 1
+          FROM estagiarios_pacientes ep
+          WHERE ep.id_paciente = a.id_paciente
+            AND ep.id_estagiario = $1
+            AND ep.status = 'Ativo'
+        )
+      `;
     }
 
-    query += `
-      ORDER BY v.nome_completo
-    `;
-
-    const result = await pool.query(query, parametros);
+    const result = await pool.query(
+      `
+      SELECT
+        a.id_anamnese,
+        a.id_paciente,
+        p.nome_completo,
+        p.idade,
+        a.motivo_consulta,
+        a.tempo_problema,
+        a.fez_terapia,
+        a.tempo_terapia,
+        a.doencas_fisicas,
+        a.uso_medicamentos,
+        a.historico_psiquiatrico,
+        a.medicacao_controlada,
+        a.doencas_mentais_familia,
+        a.relacao_familiar,
+        a.sono,
+        a.alimentacao,
+        a.uso_alcool_drogas,
+        a.atividade_fisica,
+        a.ansiedade,
+        a.humor,
+        a.estresse,
+        a.pensamentos_recorrentes,
+        a.objetivo_terapia,
+        a.observacoes_psicologo,
+        a.data_cadastro
+      FROM anamneses a
+      INNER JOIN pacientes p
+        ON p.id_paciente = a.id_paciente
+      WHERE 1 = 1
+      ${filtro}
+      ORDER BY a.data_cadastro DESC NULLS LAST,
+               a.id_anamnese DESC
+      `,
+      parametros
+    );
 
     return Response.json(result.rows);
   } catch (error) {
-    console.error("Erro ao carregar relatório de anamnese:", error);
+    console.error("Erro ao carregar anamneses:", error);
 
-    return Response.json(
-      {
-        erro: "Erro ao carregar relatório de anamnese.",
-      },
-      { status: 500 }
-    );
+    return resposta("Erro ao carregar as anamneses.", 500);
   }
 }

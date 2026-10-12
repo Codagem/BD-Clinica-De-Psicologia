@@ -1,14 +1,19 @@
 import pool from "@/lib/db";
 import { criarSessao } from "@/lib/sessao";
+import bcrypt from "bcryptjs";
+import { NextResponse } from "next/server";
+
+const HASH_FALSO = bcrypt.hashSync("senha-falsa-para-timing", 10);
+const MENSAGEM_INVALIDO = "CPF ou credencial inválidos.";
 
 function limparCPF(cpf) {
   return String(cpf || "").replace(/\D/g, "");
 }
 
 function validarCPF(cpf) {
-  if (!cpf || cpf.length !== 11) return false;
-
-  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  if (!cpf || cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) {
+    return false;
+  }
 
   let soma = 0;
 
@@ -17,9 +22,9 @@ function validarCPF(cpf) {
   }
 
   let resto = soma % 11;
-  const primeiroDigito = resto < 2 ? 0 : 11 - resto;
+  const primeiro = resto < 2 ? 0 : 11 - resto;
 
-  if (primeiroDigito !== Number(cpf[9])) {
+  if (primeiro !== Number(cpf[9])) {
     return false;
   }
 
@@ -30,9 +35,9 @@ function validarCPF(cpf) {
   }
 
   resto = soma % 11;
-  const segundoDigito = resto < 2 ? 0 : 11 - resto;
+  const segundo = resto < 2 ? 0 : 11 - resto;
 
-  return segundoDigito === Number(cpf[10]);
+  return segundo === Number(cpf[10]);
 }
 
 function normalizarData(data) {
@@ -51,60 +56,41 @@ function normalizarData(data) {
 }
 
 function validarData(data) {
-  if (!data) return false;
-
-  const dataObj = new Date(`${data}T00:00:00`);
-
-  if (Number.isNaN(dataObj.getTime())) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
     return false;
   }
 
-  const hoje = new Date();
+  const [ano, mes, dia] = data.split("-").map(Number);
+  const dataObj = new Date(Date.UTC(ano, mes - 1, dia));
 
-  if (dataObj > hoje) {
-    return false;
-  }
-
-  return dataObj.getFullYear() >= 1900;
+  return (
+    dataObj.getUTCFullYear() === ano &&
+    dataObj.getUTCMonth() === mes - 1 &&
+    dataObj.getUTCDate() === dia &&
+    ano >= 1900 &&
+    dataObj.getTime() <= Date.now()
+  );
 }
 
 export async function POST(req) {
   try {
-    const body = await req.json();
+    let body;
 
-    if (!body || typeof body !== "object") {
-      return Response.json(
-        { erro: "Dados de login inválidos." },
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { erro: "Requisição inválida." },
         { status: 400 }
       );
     }
 
-    const cpf = limparCPF(body.usuario);
-    const dataNascimento = normalizarData(body.senha);
+    const cpf = limparCPF(body?.usuario);
+    const senha = String(body?.senha || "");
 
-    if (!cpf || !dataNascimento) {
-      return Response.json(
-        {
-          erro: "CPF e data de nascimento são obrigatórios.",
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!validarCPF(cpf)) {
-      return Response.json(
-        {
-          erro: "CPF ou data de nascimento inválidos.",
-        },
-        { status: 401 }
-      );
-    }
-
-    if (!validarData(dataNascimento)) {
-      return Response.json(
-        {
-          erro: "CPF ou data de nascimento inválidos.",
-        },
+    if (!validarCPF(cpf) || !senha || senha.length > 72) {
+      return NextResponse.json(
+        { erro: MENSAGEM_INVALIDO },
         { status: 401 }
       );
     }
@@ -113,60 +99,100 @@ export async function POST(req) {
       `
       SELECT
         id_psicologo,
-        nome
+        nome,
+        TO_CHAR(data_nascimento, 'YYYY-MM-DD') AS data_nascimento,
+        senha_hash,
+        trocar_senha
       FROM public.psicologos
-      WHERE REGEXP_REPLACE(cpf, '[^0-9]', '', 'g') = $1
-      AND data_nascimento = $2::date
+      WHERE REGEXP_REPLACE(COALESCE(cpf, ''), '[^0-9]', '', 'g') = $1
       LIMIT 1
       `,
-      [cpf, dataNascimento]
+      [cpf]
     );
 
     if (resultado.rows.length === 0) {
-      return Response.json(
-        {
-          erro: "CPF ou data de nascimento inválidos.",
-        },
+      await bcrypt.compare(senha, HASH_FALSO);
+
+      return NextResponse.json(
+        { erro: MENSAGEM_INVALIDO },
         { status: 401 }
       );
     }
 
     const psicologo = resultado.rows[0];
+    const semSenhaCadastrada =
+      !psicologo.senha_hash ||
+      !String(psicologo.senha_hash).trim();
+
+    if (semSenhaCadastrada) {
+      const dataInformada = normalizarData(senha);
+      const dataBanco = psicologo.data_nascimento || "";
+
+      if (
+        !validarData(dataInformada) ||
+        !dataBanco ||
+        dataBanco !== dataInformada
+      ) {
+        return NextResponse.json(
+          { erro: MENSAGEM_INVALIDO },
+          { status: 401 }
+        );
+      }
+    } else {
+      const senhaCorreta = await bcrypt.compare(
+        senha,
+        psicologo.senha_hash
+      );
+
+      if (!senhaCorreta) {
+        return NextResponse.json(
+          { erro: MENSAGEM_INVALIDO },
+          { status: 401 }
+        );
+      }
+    }
+
+    // O psicólogo entra normalmente mesmo se ainda não criou senha.
+    const senhaPendente =
+      semSenhaCadastrada || Boolean(psicologo.trocar_senha);
 
     const token = await criarSessao({
       tipo_usuario: "psicologo",
       id_psicologo: psicologo.id_psicologo,
+      senha_pendente: senhaPendente,
     });
 
-    const secureCookie =
-      process.env.NODE_ENV === "production" ? " Secure;" : "";
+    const resposta = NextResponse.json({
+      sucesso: true,
+      mensagem: "Login realizado com sucesso.",
+      id_psicologo: psicologo.id_psicologo,
+      nome: psicologo.nome,
+      precisaTrocarSenha: senhaPendente,
+    });
 
-    return Response.json(
-      {
-        mensagem: "Login realizado com sucesso.",
-        id_psicologo: psicologo.id_psicologo,
-        nome: psicologo.nome,
-      },
-      {
-        status: 200,
-        headers: {
-          "Set-Cookie":
-            `sessao=${token}; ` +
-            `HttpOnly; ` +
-            `Path=/; ` +
-            `Max-Age=28800; ` +
-            `SameSite=Lax;` +
-            secureCookie,
-        },
-      }
-    );
+    resposta.cookies.set("sessao", token, {
+      httpOnly: true,
+      path: "/",
+      maxAge: 28800,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    // Remove eventual cookie temporário do fluxo antigo.
+    resposta.cookies.set("troca_senha_psicologo", "", {
+      httpOnly: true,
+      path: "/",
+      maxAge: 0,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    return resposta;
   } catch (error) {
     console.error("Erro no login do psicólogo:", error);
 
-    return Response.json(
-      {
-        erro: "Erro ao realizar login.",
-      },
+    return NextResponse.json(
+      { erro: "Erro ao realizar login." },
       { status: 500 }
     );
   }

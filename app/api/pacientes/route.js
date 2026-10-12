@@ -2,6 +2,10 @@
 import { verificarSessao } from "@/lib/sessao";
 import { registrarAuditoria } from "@/lib/auditoria";
 
+/* =========================================================
+   AUTENTICAÇÃO
+   ========================================================= */
+
 async function obterSessao(req) {
   const cookie = req.headers.get("cookie") || "";
 
@@ -13,11 +17,119 @@ async function obterSessao(req) {
     ? sessaoCookie.trim().substring("sessao=".length)
     : null;
 
+  if (!token) return null;
+
   return await verificarSessao(token);
+}
+
+function resposta(erro, status) {
+  return Response.json({ erro }, { status });
+}
+
+function converterId(valor) {
+  const numero = Number(valor);
+
+  return Number.isSafeInteger(numero) && numero > 0
+    ? numero
+    : null;
+}
+
+async function lerBody(req) {
+  try {
+    const body = await req.json();
+
+    if (
+      !body ||
+      typeof body !== "object" ||
+      Array.isArray(body)
+    ) {
+      return null;
+    }
+
+    return body;
+  } catch {
+    return null;
+  }
+}
+
+function limparTexto(valor) {
+  if (valor === null || valor === undefined) return null;
+
+  const texto = String(valor).trim();
+
+  return texto || null;
+}
+
+function dataNascimentoValida(valor) {
+  if (
+    typeof valor !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(valor)
+  ) {
+    return false;
+  }
+
+  const data = new Date(`${valor}T00:00:00.000Z`);
+
+  if (
+    Number.isNaN(data.getTime()) ||
+    data.toISOString().slice(0, 10) !== valor
+  ) {
+    return false;
+  }
+
+  const hoje = new Date();
+  hoje.setUTCHours(0, 0, 0, 0);
+
+  return data <= hoje;
+}
+
+function cpfValido(valor) {
+  const cpf = String(valor ?? "").replace(/\D/g, "");
+
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) {
+    return false;
+  }
+
+  let soma = 0;
+
+  for (let i = 0; i < 9; i++) {
+    soma += Number(cpf[i]) * (10 - i);
+  }
+
+  let resto = (soma * 10) % 11;
+
+  if (resto === 10) resto = 0;
+
+  if (resto !== Number(cpf[9])) return false;
+
+  soma = 0;
+
+  for (let i = 0; i < 10; i++) {
+    soma += Number(cpf[i]) * (11 - i);
+  }
+
+  resto = (soma * 10) % 11;
+
+  if (resto === 10) resto = 0;
+
+  return resto === Number(cpf[10]);
+}
+
+async function auditar(dados) {
+  try {
+    await registrarAuditoria(dados);
+  } catch (error) {
+    console.error("Falha ao registrar auditoria:", error);
+  }
+}
+
+function somenteAdmin(sessao) {
+  return sessao?.tipo_usuario === "admin";
 }
 
 /* =========================================================
    GET — LISTAR PACIENTES
+   Administrador, psicólogo e estagiário.
    ========================================================= */
 
 export async function GET(req) {
@@ -25,44 +137,30 @@ export async function GET(req) {
     const sessao = await obterSessao(req);
 
     if (!sessao) {
-      return Response.json(
-        {
-          erro: "Acesso não autorizado.",
-        },
-        { status: 403 }
-      );
+      return resposta("Sessão inválida ou expirada.", 401);
     }
 
     if (
-      sessao.tipo_usuario !== "admin" &&
-      sessao.tipo_usuario !== "psicologo" &&
-      sessao.tipo_usuario !== "estagiario"
+      !["admin", "psicologo", "estagiario"].includes(
+        sessao.tipo_usuario
+      )
     ) {
-      return Response.json(
-        {
-          erro: "Você não possui permissão para acessar os pacientes.",
-        },
-        { status: 403 }
+      return resposta(
+        "Você não possui permissão para acessar pacientes.",
+        403
       );
     }
 
-    /*
-     * O estagiário recebe somente os pacientes
-     * que estão vinculados a ele.
-     */
     if (sessao.tipo_usuario === "estagiario") {
-      if (!sessao.id_estagiario) {
-        return Response.json(
-          {
-            erro: "Estagiário não identificado.",
-          },
-          { status: 403 }
-        );
+      const idEstagiario = converterId(sessao.id_estagiario);
+
+      if (!idEstagiario) {
+        return resposta("Estagiário não identificado.", 403);
       }
 
       const result = await pool.query(
         `
-        SELECT
+        SELECT DISTINCT
           p.id_paciente,
           p.nome_completo,
           p.data_nascimento
@@ -71,32 +169,55 @@ export async function GET(req) {
           ON ep.id_paciente = p.id_paciente
         WHERE ep.id_estagiario = $1
           AND ep.status = 'Ativo'
-        ORDER BY p.id_paciente
+        ORDER BY p.nome_completo
         `,
-        [sessao.id_estagiario]
+        [idEstagiario]
       );
 
       return Response.json(result.rows);
     }
 
-    /*
-     * Administrador e psicólogo podem visualizar
-     * os pacientes cadastrados.
-     */
+    
+    // Psicólogo: somente pacientes com consultas vinculadas ao seu cadastro.
+    if (sessao.tipo_usuario === "psicologo") {
+      const idPsicologo = converterId(sessao.id_psicologo);
+
+      if (!idPsicologo) {
+        return resposta("Psicólogo não identificado na sessão.", 403);
+      }
+
+      const result = await pool.query(
+        `
+        SELECT p.*
+        FROM pacientes p
+        WHERE EXISTS (
+          SELECT 1
+          FROM consultas c
+          WHERE c.id_paciente = p.id_paciente
+            AND c.id_psicologo = $1
+        )
+        ORDER BY p.nome_completo
+        `,
+        [idPsicologo]
+      );
+
+      return Response.json(result.rows);
+    }
+
+    // Administrador: mantém a visualização geral.
     const result = await pool.query(
-      "SELECT * FROM pacientes ORDER BY id_paciente"
+      `
+      SELECT *
+      FROM pacientes
+      ORDER BY id_paciente
+      `
     );
 
     return Response.json(result.rows);
   } catch (error) {
     console.error("Erro ao carregar pacientes:", error);
 
-    return Response.json(
-      {
-        erro: "Erro ao carregar pacientes.",
-      },
-      { status: 500 }
-    );
+    return resposta("Erro ao carregar pacientes.", 500);
   }
 }
 
@@ -110,84 +231,66 @@ export async function POST(req) {
     const sessao = await obterSessao(req);
 
     if (!sessao) {
-      return Response.json(
-        {
-          erro: "Acesso não autorizado.",
-        },
-        { status: 403 }
+      return resposta("Sessão inválida ou expirada.", 401);
+    }
+
+    if (!somenteAdmin(sessao)) {
+      return resposta(
+        "Apenas o administrador pode cadastrar pacientes.",
+        403
       );
     }
 
-    if (sessao.tipo_usuario !== "admin") {
-      return Response.json(
-        {
-          erro: "Apenas o administrador pode cadastrar pacientes.",
-        },
-        { status: 403 }
+    const body = await lerBody(req);
+
+    if (!body) {
+      return resposta("Dados inválidos.", 400);
+    }
+
+    const nome = limparTexto(body.nome_completo);
+    const dataNascimento = body.data_nascimento;
+    const cpf = String(body.cpf ?? "").replace(/\D/g, "");
+    const telefone = limparTexto(body.telefone);
+    const profissao = limparTexto(body.profissao);
+
+    if (!nome || !dataNascimento || !cpf) {
+      return resposta(
+        "Nome, data de nascimento e CPF são obrigatórios.",
+        400
       );
     }
 
-    const body = await req.json();
-
-    if (!body || typeof body !== "object") {
-      return Response.json(
-        {
-          erro: "Dados inválidos.",
-        },
-        { status: 400 }
+    if (!dataNascimentoValida(dataNascimento)) {
+      return resposta(
+        "Data de nascimento inválida ou futura.",
+        400
       );
     }
 
-    const {
-      nome_completo,
-      data_nascimento,
-      cpf,
-      telefone,
-      profissao,
-    } = body;
-
-    if (!nome_completo || !data_nascimento || !cpf) {
-      return Response.json(
-        {
-          erro: "Nome, data de nascimento e CPF são obrigatórios.",
-        },
-        { status: 400 }
-      );
+    if (!cpfValido(cpf)) {
+      return resposta("CPF inválido.", 400);
     }
 
-    const cpfLimpo = String(cpf).replace(/\D/g, "");
-
-    if (cpfLimpo.length !== 11) {
-      return Response.json(
-        {
-          erro: "CPF inválido.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const pacienteExistente = await pool.query(
+    const existente = await pool.query(
       `
       SELECT id_paciente
       FROM pacientes
       WHERE REGEXP_REPLACE(cpf, '[^0-9]', '', 'g') = $1
+      LIMIT 1
       `,
-      [cpfLimpo]
+      [cpf]
     );
 
-    if (pacienteExistente.rows.length > 0) {
-      return Response.json(
-        {
-          erro: "Já existe um paciente cadastrado com este CPF.",
-        },
-        { status: 409 }
+    if (existente.rowCount > 0) {
+      return resposta(
+        "Já existe um paciente cadastrado com este CPF.",
+        409
       );
     }
 
-    const pacienteCriado = await pool.query(
+    const resultado = await pool.query(
       `
-      INSERT INTO pacientes
-      (
+      INSERT INTO pacientes (
         nome_completo,
         data_nascimento,
         cpf,
@@ -197,30 +300,23 @@ export async function POST(req) {
       VALUES ($1, $2, $3, $4, $5)
       RETURNING id_paciente
       `,
-      [
-        nome_completo,
-        data_nascimento,
-        cpfLimpo,
-        telefone || null,
-        profissao || null,
-      ]
+      [nome, dataNascimento, cpf, telefone, profissao]
     );
 
-    const idPaciente =
-      pacienteCriado.rows[0].id_paciente;
+    const idPaciente = resultado.rows[0].id_paciente;
 
-    await registrarAuditoria({
-      tipo_usuario: sessao.tipo_usuario,
-      id_usuario: null,
+    await auditar({
+      tipoUsuario: sessao.tipo_usuario,
+      idUsuario: sessao.id_usuario ?? null,
       acao: "CRIAR_PACIENTE",
-      tabela_afetada: "pacientes",
-      registro_id: idPaciente,
+      tabelaAfetada: "pacientes",
+      registroId: idPaciente,
       detalhes: "Novo paciente cadastrado pelo administrador.",
     });
 
     return Response.json(
       {
-        mensagem: "Paciente cadastrado",
+        mensagem: "Paciente cadastrado com sucesso.",
         id_paciente: idPaciente,
       },
       { status: 201 }
@@ -228,12 +324,14 @@ export async function POST(req) {
   } catch (error) {
     console.error("Erro ao cadastrar paciente:", error);
 
-    return Response.json(
-      {
-        erro: "Erro ao cadastrar paciente.",
-      },
-      { status: 500 }
-    );
+    if (error.code === "23505") {
+      return resposta(
+        "Já existe um cadastro com esses dados únicos.",
+        409
+      );
+    }
+
+    return resposta("Erro ao cadastrar paciente.", 500);
   }
 }
 
@@ -247,94 +345,66 @@ export async function PUT(req) {
     const sessao = await obterSessao(req);
 
     if (!sessao) {
-      return Response.json(
-        {
-          erro: "Acesso não autorizado.",
-        },
-        { status: 403 }
+      return resposta("Sessão inválida ou expirada.", 401);
+    }
+
+    if (!somenteAdmin(sessao)) {
+      return resposta(
+        "Apenas o administrador pode editar pacientes.",
+        403
       );
     }
 
-    if (sessao.tipo_usuario !== "admin") {
-      return Response.json(
-        {
-          erro: "Apenas o administrador pode editar pacientes.",
-        },
-        { status: 403 }
+    const body = await lerBody(req);
+
+    if (!body) {
+      return resposta("Dados inválidos.", 400);
+    }
+
+    const idPaciente = converterId(body.id);
+    const nome = limparTexto(body.nome_completo);
+    const dataNascimento = body.data_nascimento;
+    const cpf = String(body.cpf ?? "").replace(/\D/g, "");
+    const telefone = limparTexto(body.telefone);
+    const profissao = limparTexto(body.profissao);
+
+    if (!idPaciente || !nome || !dataNascimento || !cpf) {
+      return resposta(
+        "ID, nome, data de nascimento e CPF são obrigatórios.",
+        400
       );
     }
 
-    const body = await req.json();
-
-    if (!body || typeof body !== "object") {
-      return Response.json(
-        {
-          erro: "Dados inválidos.",
-        },
-        { status: 400 }
+    if (!dataNascimentoValida(dataNascimento)) {
+      return resposta(
+        "Data de nascimento inválida ou futura.",
+        400
       );
     }
 
-    const {
-      id,
-      nome_completo,
-      data_nascimento,
-      cpf,
-      telefone,
-      profissao,
-    } = body;
-
-    if (!id || !nome_completo || !data_nascimento || !cpf) {
-      return Response.json(
-        {
-          erro: "ID, nome, data de nascimento e CPF são obrigatórios.",
-        },
-        { status: 400 }
-      );
+    if (!cpfValido(cpf)) {
+      return resposta("CPF inválido.", 400);
     }
 
-    const idPaciente = Number(id);
-
-    if (!Number.isInteger(idPaciente) || idPaciente <= 0) {
-      return Response.json(
-        {
-          erro: "ID do paciente inválido.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const cpfLimpo = String(cpf).replace(/\D/g, "");
-
-    if (cpfLimpo.length !== 11) {
-      return Response.json(
-        {
-          erro: "CPF inválido.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const pacienteExistente = await pool.query(
+    const existente = await pool.query(
       `
       SELECT id_paciente
       FROM pacientes
       WHERE REGEXP_REPLACE(cpf, '[^0-9]', '', 'g') = $1
-      AND id_paciente <> $2
+        AND id_paciente <> $2
+      LIMIT 1
       `,
-      [cpfLimpo, idPaciente]
+      [cpf, idPaciente]
     );
 
-    if (pacienteExistente.rows.length > 0) {
-      return Response.json(
-        {
-          erro: "Este CPF já pertence a outro paciente.",
-        },
-        { status: 409 }
+    if (existente.rowCount > 0) {
+      return resposta(
+        "Este CPF já pertence a outro paciente.",
+        409
       );
     }
 
-    const pacienteAtualizado = await pool.query(
+    const resultado = await pool.query(
       `
       UPDATE pacientes
       SET
@@ -347,51 +417,49 @@ export async function PUT(req) {
       RETURNING id_paciente
       `,
       [
-        nome_completo,
-        data_nascimento,
-        cpfLimpo,
-        telefone || null,
-        profissao || null,
+        nome,
+        dataNascimento,
+        cpf,
+        telefone,
+        profissao,
         idPaciente,
       ]
     );
 
-    if (pacienteAtualizado.rows.length === 0) {
-      return Response.json(
-        {
-          erro: "Paciente não encontrado.",
-        },
-        { status: 404 }
-      );
+    if (resultado.rowCount === 0) {
+      return resposta("Paciente não encontrado.", 404);
     }
 
-    await registrarAuditoria({
-      tipo_usuario: sessao.tipo_usuario,
-      id_usuario: null,
+    await auditar({
+      tipoUsuario: sessao.tipo_usuario,
+      idUsuario: sessao.id_usuario ?? null,
       acao: "ALTERAR_PACIENTE",
-      tabela_afetada: "pacientes",
-      registro_id: idPaciente,
+      tabelaAfetada: "pacientes",
+      registroId: idPaciente,
       detalhes: "Dados do paciente alterados pelo administrador.",
     });
 
     return Response.json({
-      mensagem: "Paciente atualizado",
+      mensagem: "Paciente atualizado com sucesso.",
     });
   } catch (error) {
     console.error("Erro ao atualizar paciente:", error);
 
-    return Response.json(
-      {
-        erro: "Erro ao atualizar paciente.",
-      },
-      { status: 500 }
-    );
+    if (error.code === "23505") {
+      return resposta(
+        "Já existe um cadastro com esses dados únicos.",
+        409
+      );
+    }
+
+    return resposta("Erro ao atualizar paciente.", 500);
   }
 }
 
 /* =========================================================
    DELETE — EXCLUIR PACIENTE
    Somente administrador.
+   Bloqueia exclusão quando existem consultas vinculadas.
    ========================================================= */
 
 export async function DELETE(req) {
@@ -399,54 +467,26 @@ export async function DELETE(req) {
     const sessao = await obterSessao(req);
 
     if (!sessao) {
-      return Response.json(
-        {
-          erro: "Acesso não autorizado.",
-        },
-        { status: 403 }
+      return resposta("Sessão inválida ou expirada.", 401);
+    }
+
+    if (!somenteAdmin(sessao)) {
+      return resposta(
+        "Apenas o administrador pode excluir pacientes.",
+        403
       );
     }
 
-    if (sessao.tipo_usuario !== "admin") {
-      return Response.json(
-        {
-          erro: "Apenas o administrador pode excluir pacientes.",
-        },
-        { status: 403 }
-      );
+    const body = await lerBody(req);
+
+    if (!body) {
+      return resposta("Dados inválidos.", 400);
     }
 
-    const body = await req.json();
+    const idPaciente = converterId(body.id);
 
-    if (!body || typeof body !== "object") {
-      return Response.json(
-        {
-          erro: "Dados inválidos.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const { id } = body;
-
-    if (!id) {
-      return Response.json(
-        {
-          erro: "ID do paciente é obrigatório.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const idPaciente = Number(id);
-
-    if (!Number.isInteger(idPaciente) || idPaciente <= 0) {
-      return Response.json(
-        {
-          erro: "ID do paciente inválido.",
-        },
-        { status: 400 }
-      );
+    if (!idPaciente) {
+      return resposta("ID do paciente inválido.", 400);
     }
 
     const paciente = await pool.query(
@@ -458,31 +498,23 @@ export async function DELETE(req) {
       [idPaciente]
     );
 
-    if (paciente.rows.length === 0) {
-      return Response.json(
-        {
-          erro: "Paciente não encontrado.",
-        },
-        { status: 404 }
-      );
+    if (paciente.rowCount === 0) {
+      return resposta("Paciente não encontrado.", 404);
     }
 
     const consultas = await pool.query(
       `
-      SELECT COUNT(*)
+      SELECT COUNT(*)::integer AS quantidade
       FROM consultas
       WHERE id_paciente = $1
       `,
       [idPaciente]
     );
 
-    if (Number(consultas.rows[0].count) > 0) {
-      return Response.json(
-        {
-          erro:
-            "Este paciente possui consultas cadastradas. Exclua ou remova as consultas antes de excluir o paciente.",
-        },
-        { status: 409 }
+    if (consultas.rows[0].quantidade > 0) {
+      return resposta(
+        "Este paciente possui consultas vinculadas. Preserve o histórico e desative o cadastro em vez de excluir seus dados.",
+        409
       );
     }
 
@@ -494,26 +526,28 @@ export async function DELETE(req) {
       [idPaciente]
     );
 
-    await registrarAuditoria({
-      tipo_usuario: sessao.tipo_usuario,
-      id_usuario: null,
+    await auditar({
+      tipoUsuario: sessao.tipo_usuario,
+      idUsuario: sessao.id_usuario ?? null,
       acao: "EXCLUIR_PACIENTE",
-      tabela_afetada: "pacientes",
-      registro_id: idPaciente,
+      tabelaAfetada: "pacientes",
+      registroId: idPaciente,
       detalhes: "Paciente excluído pelo administrador.",
     });
 
     return Response.json({
-      mensagem: "Paciente removido",
+      mensagem: "Paciente removido com sucesso.",
     });
   } catch (error) {
     console.error("Erro ao excluir paciente:", error);
 
-    return Response.json(
-      {
-        erro: "Erro ao excluir paciente.",
-      },
-      { status: 500 }
-    );
+    if (error.code === "23503") {
+      return resposta(
+        "Não é possível excluir este paciente porque existem registros vinculados.",
+        409
+      );
+    }
+
+    return resposta("Erro ao excluir paciente.", 500);
   }
 }

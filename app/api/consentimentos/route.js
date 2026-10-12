@@ -1,6 +1,7 @@
 import pool from "@/lib/db";
 import { registrarAuditoria } from "@/lib/auditoria";
 import { verificarSessao } from "@/lib/sessao";
+import { Resend } from "resend";
 
 // =====================================================
 // FUNÇÃO — OBTER IP DO CLIENTE
@@ -28,7 +29,6 @@ function obterIp(req) {
 
 function obterCookieSessao(req) {
   const cookie = req.headers.get("cookie") || "";
-
   const cookies = cookie.split(";");
 
   for (const item of cookies) {
@@ -44,32 +44,16 @@ function obterCookieSessao(req) {
 
 // =====================================================
 // GET — CONSULTAR CONSENTIMENTO
-//
-// ADMIN       → pode consultar qualquer paciente
-// PSICÓLOGO   → pode consultar qualquer paciente
-// ESTAGIÁRIO  → pode consultar qualquer paciente
-// PACIENTE    → somente o próprio consentimento
-//
-// Token temporário de consentimento NÃO pode ser usado
-// para consultar consentimentos.
 // =====================================================
 
 export async function GET(req) {
   try {
-    // =================================================
-    // OBTER SESSÃO
-    // =================================================
-
     const tokenSessao = obterCookieSessao(req);
 
     if (!tokenSessao) {
       return Response.json(
-        {
-          erro: "Não autorizado.",
-        },
-        {
-          status: 403,
-        }
+        { erro: "Não autorizado." },
+        { status: 403 }
       );
     }
 
@@ -77,18 +61,10 @@ export async function GET(req) {
 
     if (!sessao) {
       return Response.json(
-        {
-          erro: "Sessão inválida ou expirada.",
-        },
-        {
-          status: 403,
-        }
+        { erro: "Sessão inválida ou expirada." },
+        { status: 403 }
       );
     }
-
-    // =================================================
-    // IDENTIFICAR USUÁRIO
-    // =================================================
 
     const tipoUsuario = sessao.tipo_usuario;
 
@@ -102,30 +78,20 @@ export async function GET(req) {
     if (!tiposPermitidos.includes(tipoUsuario)) {
       return Response.json(
         {
-          erro: "Sessão sem permissão para consultar consentimentos.",
+          erro:
+            "Sessão sem permissão para consultar consentimentos.",
         },
-        {
-          status: 403,
-        }
+        { status: 403 }
       );
     }
 
-    // =================================================
-    // OBTER ID DO PACIENTE SOLICITADO
-    // =================================================
-
     const { searchParams } = new URL(req.url);
-
     const idPacienteInformado = searchParams.get("id_paciente");
 
     if (!idPacienteInformado) {
       return Response.json(
-        {
-          erro: "Paciente não informado.",
-        },
-        {
-          status: 400,
-        }
+        { erro: "Paciente não informado." },
+        { status: 400 }
       );
     }
 
@@ -133,21 +99,12 @@ export async function GET(req) {
 
     if (!Number.isInteger(idPaciente) || idPaciente <= 0) {
       return Response.json(
-        {
-          erro: "Paciente inválido.",
-        },
-        {
-          status: 400,
-        }
+        { erro: "Paciente inválido." },
+        { status: 400 }
       );
     }
 
-    // =================================================
-    // REGRA ESPECIAL PARA PACIENTE
-    //
-    // O paciente só pode consultar o próprio consentimento.
-    // =================================================
-
+    // Paciente só pode consultar o próprio consentimento.
     if (tipoUsuario === "paciente") {
       const idPacienteSessao = Number(sessao.id_paciente);
 
@@ -160,16 +117,10 @@ export async function GET(req) {
             erro:
               "Acesso negado. Você só pode consultar o seu próprio consentimento.",
           },
-          {
-            status: 403,
-          }
+          { status: 403 }
         );
       }
     }
-
-    // =================================================
-    // BUSCAR CONSENTIMENTO
-    // =================================================
 
     const resultado = await pool.query(
       `
@@ -189,26 +140,17 @@ export async function GET(req) {
 
     return Response.json(resultado.rows[0] || null);
   } catch (error) {
-    console.error(
-      "Erro ao buscar consentimento:",
-      error
-    );
+    console.error("Erro ao buscar consentimento:", error);
 
     return Response.json(
-      {
-        erro: "Erro ao buscar consentimento.",
-      },
-      {
-        status: 500,
-      }
+      { erro: "Erro ao buscar consentimento." },
+      { status: 500 }
     );
   }
 }
 
 // =====================================================
 // POST — REGISTRAR CONSENTIMENTO
-//
-// Usa token temporário vinculado ao paciente.
 // =====================================================
 
 export async function POST(req) {
@@ -226,59 +168,33 @@ export async function POST(req) {
 
     if (!token_consentimento) {
       return Response.json(
-        {
-          erro: "Token de consentimento não informado.",
-        },
-        {
-          status: 403,
-        }
+        { erro: "Token de consentimento não informado." },
+        { status: 403 }
       );
     }
 
-    const token = await verificarSessao(
-      token_consentimento
-    );
+    const token = await verificarSessao(token_consentimento);
 
     if (!token) {
       return Response.json(
-        {
-          erro:
-            "Token de consentimento inválido ou expirado.",
-        },
-        {
-          status: 403,
-        }
+        { erro: "Token de consentimento inválido ou expirado." },
+        { status: 403 }
       );
     }
 
-    // =================================================
-    // VALIDAR FINALIDADE DO TOKEN
-    // =================================================
-
     if (token.tipo !== "consentimento") {
       return Response.json(
-        {
-          erro: "Token inválido para esta operação.",
-        },
-        {
-          status: 403,
-        }
+        { erro: "Token inválido para esta operação." },
+        { status: 403 }
       );
     }
 
     const idPaciente = Number(token.id_paciente);
 
-    if (
-      !Number.isInteger(idPaciente) ||
-      idPaciente <= 0
-    ) {
+    if (!Number.isInteger(idPaciente) || idPaciente <= 0) {
       return Response.json(
-        {
-          erro: "Paciente inválido.",
-        },
-        {
-          status: 400,
-        }
+        { erro: "Paciente inválido." },
+        { status: 400 }
       );
     }
 
@@ -292,19 +208,20 @@ export async function POST(req) {
           erro:
             "O Termo de Consentimento e Privacidade deve ser aceito.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
     // =================================================
-    // VERIFICAR PACIENTE
+    // BUSCAR PACIENTE
     // =================================================
 
-    const paciente = await pool.query(
+    const pacienteResultado = await pool.query(
       `
-      SELECT id_paciente
+      SELECT
+        id_paciente,
+        nome_completo,
+        email
       FROM pacientes
       WHERE id_paciente = $1
       LIMIT 1
@@ -312,19 +229,17 @@ export async function POST(req) {
       [idPaciente]
     );
 
-    if (paciente.rows.length === 0) {
+    if (pacienteResultado.rows.length === 0) {
       return Response.json(
-        {
-          erro: "Paciente não encontrado.",
-        },
-        {
-          status: 404,
-        }
+        { erro: "Paciente não encontrado." },
+        { status: 404 }
       );
     }
 
+    const paciente = pacienteResultado.rows[0];
+
     // =================================================
-    // IMPEDIR REUTILIZAÇÃO
+    // IMPEDIR REUTILIZAÇÃO DO CONSENTIMENTO
     // =================================================
 
     const consentimentoExistente = await pool.query(
@@ -343,21 +258,15 @@ export async function POST(req) {
           erro:
             "O consentimento deste paciente já foi registrado.",
         },
-        {
-          status: 409,
-        }
+        { status: 409 }
       );
     }
 
     // =================================================
-    // OBTER IP
+    // REGISTRAR CONSENTIMENTO
     // =================================================
 
     const ipAceite = obterIp(req);
-
-    // =================================================
-    // REGISTRAR CONSENTIMENTO
-    // =================================================
 
     const resultado = await pool.query(
       `
@@ -367,12 +276,7 @@ export async function POST(req) {
         aceitou,
         ip_aceite
       )
-      VALUES
-      (
-        $1,
-        $2,
-        $3
-      )
+      VALUES ($1, $2, $3)
       RETURNING
         id_consentimento,
         id_paciente,
@@ -380,11 +284,7 @@ export async function POST(req) {
         data_aceite,
         ip_aceite
       `,
-      [
-        idPaciente,
-        true,
-        ipAceite,
-      ]
+      [idPaciente, true, ipAceite]
     );
 
     const consentimento = resultado.rows[0];
@@ -404,32 +304,79 @@ export async function POST(req) {
     });
 
     // =================================================
+    // ENVIAR E-MAIL DE CONFIRMAÇÃO
+    //
+    // O consentimento já foi salvo.
+    // Falha no e-mail não desfaz o cadastro.
+    // =================================================
+
+    let emailEnviado = false;
+
+    const emailPaciente = String(paciente.email || "").trim();
+    const apiKey = process.env.RESEND_API_KEY;
+
+    if (emailPaciente && apiKey) {
+      try {
+        const resend = new Resend(apiKey);
+
+        const { data, error } = await resend.emails.send({
+          from: "Clínica Psi <onboarding@resend.dev>",
+          to: [emailPaciente],
+          subject: "Cadastro confirmado — Clínica Psi",
+          text:
+            `Olá, ${paciente.nome_completo}!\n\n` +
+            "Seu cadastro na Clínica Psi foi realizado com sucesso, " +
+            "e seu consentimento de privacidade foi registrado.\n\n" +
+            "Se você não realizou esse cadastro, entre em contato com a clínica.",
+        });
+
+        if (error) {
+          console.error(
+            "Falha no envio do e-mail de confirmação:",
+            error
+          );
+        } else {
+          emailEnviado = true;
+
+          console.info(
+            "Solicitação de e-mail de confirmação aceita pelo Resend:",
+            data?.id
+          );
+        }
+      } catch (erroEmail) {
+        console.error(
+          "Erro inesperado no envio de confirmação:",
+          erroEmail
+        );
+      }
+    } else if (!emailPaciente) {
+      console.info(
+        "E-mail de confirmação não enviado: paciente sem e-mail cadastrado."
+      );
+    } else {
+      console.warn(
+        "E-mail de confirmação não enviado: RESEND_API_KEY não configurada."
+      );
+    }
+
+    // =================================================
     // RESPOSTA
     // =================================================
 
     return Response.json(
       {
-        mensagem:
-          "Consentimento registrado com sucesso.",
+        mensagem: "Consentimento registrado com sucesso.",
         consentimento,
+        emailEnviado,
       },
-      {
-        status: 201,
-      }
+      { status: 201 }
     );
   } catch (error) {
-    console.error(
-      "Erro ao salvar consentimento:",
-      error
-    );
+    console.error("Erro ao salvar consentimento:", error);
 
     return Response.json(
-      {
-        erro: "Erro ao salvar consentimento.",
-      },
-      {
-        status: 500,
-      }
+      { erro: "Erro ao salvar consentimento." },
+      { status: 500 }
     );
   }
 }

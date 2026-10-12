@@ -52,10 +52,7 @@ export async function GET(req) {
       FROM vw_resumo_financeiro
     `);
 
-    const estoqueBaixo = await pool.query(`
-      SELECT COUNT(*)::int AS total
-      FROM vw_estoque_baixo
-    `);
+
 
     const consultasSemanaBanco = await pool.query(`
       SELECT
@@ -99,8 +96,6 @@ export async function GET(req) {
         financeiro.rows[0]?.total_despesas || 0,
       lucro:
         financeiro.rows[0]?.lucro_liquido || 0,
-      estoqueBaixo:
-        estoqueBaixo.rows[0].total,
       consultasSemana,
     });
   } catch (error) {

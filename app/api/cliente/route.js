@@ -1,7 +1,17 @@
 import pool from "@/lib/db";
-import { verificarPaciente } from "../auth/verificar-acesso";
 import { verificarSessao } from "@/lib/sessao";
+import { verificarPaciente } from "../auth/verificar-acesso";
 import { registrarAuditoria } from "@/lib/auditoria";
+
+const STATUS_OCUPADOS = [
+  "Pendente de confirmação",
+  "Agendada",
+  "Agendado",
+  "Confirmado",
+];
+
+const PRECO_CONSULTA = 180;
+const DURACAO_MINUTOS = 60;
 
 async function obterSessao(req) {
   const cookie = req.headers.get("cookie") || "";
@@ -14,277 +24,311 @@ async function obterSessao(req) {
     ? sessaoCookie.trim().substring("sessao=".length)
     : null;
 
-  return await verificarSessao(token);
+  if (!token) return null;
+
+  return verificarSessao(token);
 }
 
+function dataValida(valor) {
+  if (
+    typeof valor !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(valor)
+  ) {
+    return false;
+  }
+
+  const data = new Date(`${valor}T00:00:00Z`);
+
+  return (
+    !Number.isNaN(data.getTime()) &&
+    data.toISOString().slice(0, 10) === valor
+  );
+}
+
+function dataAtualRecife() {
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Recife",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const valores = Object.fromEntries(
+    partes.map((parte) => [parte.type, parte.value])
+  );
+
+  return `${valores.year}-${valores.month}-${valores.day}`;
+}
+
+function diaUtil(dataTexto) {
+  const dia = new Date(`${dataTexto}T12:00:00Z`).getUTCDay();
+  return dia >= 1 && dia <= 5;
+}
+
+function dataPermitida(dataTexto) {
+  return (
+    dataValida(dataTexto) &&
+    dataTexto >= dataAtualRecife() &&
+    diaUtil(dataTexto)
+  );
+}
+
+function horarioPermitido(horario) {
+  return (
+    typeof horario === "string" &&
+    /^(08|09|10|11|12|13|14|15|16|17):00$/.test(horario)
+  );
+}
+
+function erro(mensagem, status = 400) {
+  return Response.json({ erro: mensagem }, { status });
+}
+
+async function autenticarPaciente(req) {
+  const sessao = await obterSessao(req);
+
+  if (
+    !sessao ||
+    sessao.tipo_usuario !== "paciente" ||
+    !Number.isInteger(Number(sessao.id_paciente)) ||
+    Number(sessao.id_paciente) <= 0
+  ) {
+    return {
+      erro: erro("Sessão de paciente inválida ou expirada.", 401),
+    };
+  }
+
+  const idPaciente = Number(sessao.id_paciente);
+  const acesso = await verificarPaciente(idPaciente);
+
+  if (!acesso.autorizado) {
+    return {
+      erro: erro(acesso.erro || "Acesso não autorizado.", 403),
+    };
+  }
+
+  return { sessao, idPaciente };
+}
+
+/*
+ * GET
+ * Lista os psicólogos e, quando recebe data e psicólogo,
+ * retorna somente os horários livres.
+ */
 export async function GET(req) {
   try {
+    const autenticacao = await autenticarPaciente(req);
+
+    if (autenticacao.erro) return autenticacao.erro;
+
     const { searchParams } = new URL(req.url);
-    const idPaciente = searchParams.get("id_paciente");
+    const data = searchParams.get("data");
+    const idPsicologoTexto = searchParams.get("id_psicologo");
 
-    if (!idPaciente) {
-      return Response.json(
-        {
-          erro: "ID do paciente não informado.",
-        },
-        { status: 400 }
+    const psicologosResult = await pool.query(`
+      SELECT id_psicologo, nome, especialidade
+      FROM psicologos
+      ORDER BY nome
+    `);
+
+    const resposta = {
+      psicologos: psicologosResult.rows,
+      horarios: [],
+    };
+
+    if (!data && !idPsicologoTexto) {
+      return Response.json(resposta);
+    }
+
+    if (!dataPermitida(data)) {
+      return erro(
+        "Escolha uma data de segunda a sexta-feira, a partir de hoje."
       );
     }
 
-    const idPacienteNumero = Number(idPaciente);
+    const idPsicologo = Number(idPsicologoTexto);
 
-    if (
-      !Number.isInteger(idPacienteNumero) ||
-      idPacienteNumero <= 0
-    ) {
-      return Response.json(
-        {
-          erro: "ID do paciente inválido.",
-        },
-        { status: 400 }
-      );
+    if (!Number.isInteger(idPsicologo) || idPsicologo <= 0) {
+      return erro("Selecione um psicólogo válido.");
     }
 
-    const sessao = await obterSessao(req);
-
-    if (
-      !sessao ||
-      sessao.tipo_usuario !== "paciente" ||
-      Number(sessao.id_paciente) !== idPacienteNumero
-    ) {
-      return Response.json(
-        {
-          erro: "Acesso não autorizado.",
-        },
-        { status: 403 }
-      );
-    }
-
-    const acesso = await verificarPaciente(idPacienteNumero);
-
-    if (!acesso.autorizado) {
-      return Response.json(
-        {
-          erro: acesso.erro,
-        },
-        { status: 403 }
-      );
-    }
-
-    const paciente = await pool.query(
-      `
-      SELECT
-        id_paciente,
-        nome_completo,
-        cpf,
-        data_nascimento,
-        telefone,
-        email,
-        profissao
-      FROM pacientes
-      WHERE id_paciente = $1
-      `,
-      [idPacienteNumero]
+    const psicologoExiste = psicologosResult.rows.some(
+      (psicologo) =>
+        Number(psicologo.id_psicologo) === idPsicologo
     );
 
-    if (paciente.rows.length === 0) {
-      return Response.json(
-        {
-          erro: "Paciente não encontrado.",
-        },
-        { status: 404 }
+    if (!psicologoExiste) {
+      return erro("Psicólogo não encontrado.", 404);
+    }
+
+    const horariosPossiveis = [];
+
+    for (let hora = 8; hora <= 17; hora++) {
+      horariosPossiveis.push(
+        `${String(hora).padStart(2, "0")}:00`
       );
     }
 
-    const consultas = await pool.query(
-      `
-      SELECT
-        c.id_consulta,
-        c.data_consulta,
-        c.horario,
-        c.tipo_atendimento,
-        c.status_consulta,
-        c.observacoes,
-        ps.nome AS psicologo
-      FROM consultas c
-      JOIN psicologos ps
-        ON c.id_psicologo = ps.id_psicologo
-      WHERE c.id_paciente = $1
-      ORDER BY c.data_consulta DESC, c.horario DESC
-      `,
-      [idPacienteNumero]
-    );
+    for (const horario of horariosPossiveis) {
+      const ocupado = await pool.query(
+        `
+        SELECT EXISTS (
+          SELECT 1
+          FROM consultas c
+          WHERE c.data_consulta = $1::date
+            AND c.status_consulta = ANY($4::varchar[])
+            AND (
+              c.id_psicologo = $2
+              OR c.id_paciente = $3
+            )
+            AND c.data_consulta + c.horario
+                  < $1::date + $5::time + interval '60 minutes'
+            AND c.data_consulta + c.horario
+                  + interval '60 minutes' > $1::date + $5::time
+        ) AS ocupado
+        `,
+        [
+          data,
+          idPsicologo,
+          autenticacao.idPaciente,
+          STATUS_OCUPADOS,
+          horario,
+        ]
+      );
 
-    return Response.json({
-      paciente: paciente.rows[0],
-      consultas: consultas.rows,
-    });
+      if (!ocupado.rows[0].ocupado) {
+        resposta.horarios.push(horario);
+      }
+    }
+
+    return Response.json(resposta);
   } catch (error) {
-    console.error(
-      "Erro ao carregar dados do paciente:",
-      error
-    );
+    console.error("Erro ao consultar horários:", error);
 
-    return Response.json(
-      {
-        erro: "Erro ao carregar dados do paciente.",
-      },
-      { status: 500 }
-    );
+    return erro("Não foi possível carregar os horários disponíveis.", 500);
   }
 }
 
-export async function PUT(req) {
+/*
+ * POST
+ * Registra uma solicitação pendente.
+ * Não cria pagamento e não marca a consulta como paga.
+ */
+export async function POST(req) {
   try {
-    const sessao = await obterSessao(req);
+    const autenticacao = await autenticarPaciente(req);
 
-    if (!sessao || sessao.tipo_usuario !== "paciente") {
-      return Response.json(
-        {
-          erro: "Acesso não autorizado.",
-        },
-        { status: 403 }
+    if (autenticacao.erro) return autenticacao.erro;
+
+    let body;
+
+    try {
+      body = await req.json();
+    } catch {
+      return erro("Corpo da solicitação inválido.");
+    }
+
+    const idPsicologo = Number(body.id_psicologo);
+    const data = body.data_consulta;
+    const horario = body.horario;
+
+    if (!Number.isInteger(idPsicologo) || idPsicologo <= 0) {
+      return erro("Selecione um psicólogo válido.");
+    }
+
+    if (!dataPermitida(data)) {
+      return erro(
+        "A data deve ser um dia útil a partir de hoje."
       );
     }
 
-    const body = await req.json();
-
-    if (body.tipo !== "confirmar_consulta") {
-      return Response.json(
-        {
-          erro: "Tipo de ação inválido.",
-        },
-        { status: 400 }
+    if (!horarioPermitido(horario)) {
+      return erro(
+        "Escolha um horário entre 08:00 e 17:00, em intervalos de uma hora."
       );
     }
 
-    const { id_consulta, status_consulta } = body;
-
-    if (!id_consulta || !status_consulta) {
-      return Response.json(
-        {
-          erro: "Dados inválidos.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const idConsulta = Number(id_consulta);
-
-    if (!Number.isInteger(idConsulta) || idConsulta <= 0) {
-      return Response.json(
-        {
-          erro: "ID da consulta inválido.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const statusPermitidos = [
-      "Confirmado",
-      "Cancelado",
-    ];
-
-    if (!statusPermitidos.includes(status_consulta)) {
-      return Response.json(
-        {
-          erro: "Status de consulta não permitido para o paciente.",
-        },
-        { status: 400 }
-      );
-    }
-
-    // O paciente só pode alterar a própria consulta.
-    // Além disso, consultas já finalizadas ou canceladas
-    // não podem ser alteradas pelo paciente.
-    const consultaAtual = await pool.query(
+    const psicologo = await pool.query(
       `
-      SELECT
-        id_consulta,
-        status_consulta
-      FROM consultas
-      WHERE id_consulta = $1
-      AND id_paciente = $2
+      SELECT id_psicologo
+      FROM psicologos
+      WHERE id_psicologo = $1
       `,
-      [
-        idConsulta,
-        Number(sessao.id_paciente),
-      ]
+      [idPsicologo]
     );
 
-    if (consultaAtual.rows.length === 0) {
-      return Response.json(
-        {
-          erro:
-            "Consulta não encontrada ou não pertence ao paciente.",
-        },
-        { status: 403 }
-      );
+    if (psicologo.rowCount === 0) {
+      return erro("Psicólogo não encontrado.", 404);
     }
 
-    const statusAtual = consultaAtual.rows[0].status_consulta;
-
-    const statusBloqueados = [
-      "Realizado",
-      "Cancelada",
-    ];
-
-    if (statusBloqueados.includes(statusAtual)) {
-      return Response.json(
-        {
-          erro:
-            "Esta consulta não pode mais ser alterada pelo paciente.",
-        },
-        { status: 403 }
-      );
-    }
-
-    const consulta = await pool.query(
+    const resultado = await pool.query(
       `
-      UPDATE consultas
-      SET status_consulta = $1
-      WHERE id_consulta = $2
-      AND id_paciente = $3
-      RETURNING id_consulta, status_consulta
-      `,
-      [
+      INSERT INTO consultas (
+        id_paciente,
+        id_psicologo,
+        data_consulta,
+        horario,
+        tipo_atendimento,
         status_consulta,
-        idConsulta,
-        Number(sessao.id_paciente),
+        observacoes
+      )
+      VALUES ($1, $2, $3::date, $4::time, $5, $6, $7)
+      RETURNING
+        id_consulta,
+        id_paciente,
+        id_psicologo,
+        data_consulta,
+        horario,
+        tipo_atendimento,
+        status_consulta,
+        observacoes
+      `,
+      [
+        autenticacao.idPaciente,
+        idPsicologo,
+        data,
+        horario,
+        "Presencial",
+        "Pendente de confirmação",
+        `Solicitação pelo portal. Duração: ${DURACAO_MINUTOS} minutos. Valor: R$ ${PRECO_CONSULTA},00. Pagamento presencial na clínica.`,
       ]
     );
 
-    if (consulta.rows.length === 0) {
-      return Response.json(
-        {
-          erro:
-            "Consulta não encontrada ou não pertence ao paciente.",
-        },
-        { status: 403 }
-      );
+    try {
+      await registrarAuditoria({
+        tipoUsuario: "paciente",
+        idUsuario: autenticacao.idPaciente,
+        acao: "SOLICITAR AGENDAMENTO",
+        tabelaAfetada: "consultas",
+        registroId: resultado.rows[0].id_consulta,
+        detalhes:
+          "Solicitação de consulta presencial registrada como pendente de confirmação.",
+      });
+    } catch (auditError) {
+      console.error("Falha ao registrar auditoria:", auditError);
     }
-
-    await registrarAuditoria({
-      tipoUsuario: sessao.tipo_usuario,
-      idUsuario: Number(sessao.id_paciente),
-      acao: "ALTERAÇÃO DE CONSULTA",
-      tabelaAfetada: "consultas",
-      registroId: idConsulta,
-      detalhes:
-        `Paciente alterou o status da consulta para: ${status_consulta}.`,
-    });
-
-    return Response.json({
-      mensagem: "Consulta atualizada com sucesso.",
-    });
-  } catch (error) {
-    console.error("Erro na API do paciente:", error);
 
     return Response.json(
       {
-        erro: "Erro ao processar a solicitação.",
+        mensagem:
+          "Solicitação enviada! Aguarde a confirmação da clínica.",
+        consulta: resultado.rows[0],
+        valor: PRECO_CONSULTA,
+        duracao_minutos: DURACAO_MINUTOS,
+        pagamento: "Presencial na clínica",
       },
-      { status: 500 }
+      { status: 201 }
     );
+  } catch (error) {
+    if (error?.code === "23P01") {
+      return erro(
+        "Esse horário acabou de ser ocupado para você ou para o psicólogo. Escolha outro horário.",
+        409
+      );
+    }
+
+    console.error("Erro ao solicitar agendamento:", error);
+
+    return erro("Não foi possível registrar o agendamento.", 500);
   }
 }

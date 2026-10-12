@@ -59,12 +59,12 @@ setAberto(false);
 }
 
 const linksAdmin = [
-{ href: "/", label: "Início", icon: LayoutDashboard },
+{ href: "/admin", label: "Início", icon: LayoutDashboard },
 { href: "/pacientes", label: "Pacientes", icon: Users },
 { href: "/consultas", label: "Consultas", icon: CalendarDays },
 { href: "/profissionais", label: "Profissionais", icon: Users },
 { href: "/financeiro", label: "Financeiro", icon: Wallet },
-{ href: "/estoque", label: "Estoque", icon: Package },
+//{ href: "/estoque", label: "Estoque", icon: Package },
 { href: "/admin/auditoria", label: "Auditoria", icon: ShieldCheck },
 ];
 

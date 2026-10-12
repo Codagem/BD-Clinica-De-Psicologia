@@ -24,12 +24,37 @@ import {
    ========================================================= */
 
 const MENU = [
-  { nome: "Dashboard", href: "/psicologo", icone: LayoutDashboard, ativo: true },
-  { nome: "Consultas", href: "/psicologo/consultas", icone: CalendarDays },
-  { nome: "Pacientes", href: "/psicologo/pacientes", icone: Users },
-  { nome: "Anamneses", href: "/psicologo/anamneses", icone: ClipboardList },
-  { nome: "Prontuários", href: "/psicologo/prontuarios", icone: FileText },
-  { nome: "Meu perfil", href: "/psicologo/perfil", icone: UserRound },
+  {
+    nome: "Dashboard",
+    href: "/psicologo",
+    icone: LayoutDashboard,
+    ativo: true,
+  },
+  {
+    nome: "Consultas",
+    href: "/psicologo/consultas",
+    icone: CalendarDays,
+  },
+  {
+    nome: "Pacientes",
+    href: "/psicologo/pacientes",
+    icone: Users,
+  },
+  {
+    nome: "Anamneses",
+    href: "/psicologo/anamneses",
+    icone: ClipboardList,
+  },
+  {
+    nome: "Prontuários",
+    href: "/psicologo/prontuarios",
+    icone: FileText,
+  },
+  {
+    nome: "Meu perfil",
+    href: "/psicologo/perfil",
+    icone: UserRound,
+  },
 ];
 
 const ATALHOS = [
@@ -41,7 +66,7 @@ const ATALHOS = [
   },
   {
     titulo: "Meus pacientes",
-    descricao: "Visualizar pacientes",
+    descricao: "Visualizar pacientes vinculados",
     icone: Users,
     href: "/psicologo/pacientes",
   },
@@ -88,24 +113,29 @@ async function lerJson(resposta) {
   }
 }
 
-// Retorna a lista ou null (nunca lança erro)
 async function buscarLista(url) {
   try {
-    const resposta = await fetch(url, { method: "GET", cache: "no-store" });
+    const resposta = await fetch(url, {
+      method: "GET",
+      cache: "no-store",
+      credentials: "include",
+    });
 
     if (!resposta.ok) {
+      console.error(
+        `Falha ao consultar ${url}: HTTP ${resposta.status}`
+      );
       return null;
     }
 
     const dados = await lerJson(resposta);
-
     return Array.isArray(dados) ? dados : null;
-  } catch {
+  } catch (erro) {
+    console.error(`Erro ao consultar ${url}:`, erro);
     return null;
   }
 }
 
-// Data de hoje no fuso do navegador, no formato AAAA-MM-DD
 function hojeISO() {
   const agora = new Date();
   const ano = agora.getFullYear();
@@ -115,21 +145,26 @@ function hojeISO() {
   return `${ano}-${mes}-${dia}`;
 }
 
-// Usa só os 10 primeiros caracteres (AAAA-MM-DD) para evitar
-// que o fuso horário mude o dia ao converter com new Date()
 function diaDaConsulta(valor) {
-  return typeof valor === "string" ? valor.slice(0, 10) : "";
+  if (!valor) return "";
+  return String(valor).slice(0, 10);
 }
 
 function statusDaConsulta(consulta) {
-  return String(consulta?.status_consulta || "").trim().toLowerCase();
+  return String(
+    consulta?.status_consulta ?? consulta?.status ?? ""
+  )
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
 function salvarLocal(chave, valor) {
   try {
     localStorage.setItem(chave, valor);
   } catch {
-    // localStorage indisponível (modo privado, por exemplo)
+    // O funcionamento principal não depende do localStorage.
   }
 }
 
@@ -137,12 +172,16 @@ function removerLocal(chave) {
   try {
     localStorage.removeItem(chave);
   } catch {
-    // ignora
+    // Ignora indisponibilidade do localStorage.
   }
 }
 
+function nomeDoPsicologo(registro) {
+  return registro?.nome_completo || registro?.nome || "Psicólogo";
+}
+
 /* =========================================================
-   PÁGINA
+   PÁGINA DO PSICÓLOGO
    ========================================================= */
 
 export default function Psicologo() {
@@ -154,18 +193,23 @@ export default function Psicologo() {
   const [consultas, setConsultas] = useState([]);
   const [totalPacientes, setTotalPacientes] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [erroCarregamento, setErroCarregamento] = useState("");
+
+  /* =========================================================
+     SESSÃO E DADOS DO PAINEL
+     ========================================================= */
 
   useEffect(() => {
     let ativo = true;
-    let redirecionando = false;
 
     async function carregarPainel() {
       try {
-        /* ---------- 1. SESSÃO ---------- */
+        setErroCarregamento("");
 
         const respostaSessao = await fetch("/api/sessao", {
           method: "GET",
           cache: "no-store",
+          credentials: "include",
         });
 
         const sessao = respostaSessao.ok
@@ -177,14 +221,11 @@ export default function Psicologo() {
           sessao.tipo_usuario !== "psicologo" ||
           !sessao.id_psicologo
         ) {
-          redirecionando = true;
           router.replace("/login");
           return;
         }
 
         const idPsicologo = Number(sessao.id_psicologo);
-
-        /* ---------- 2. DADOS (em paralelo) ---------- */
 
         const [psicologos, listaConsultas, listaPacientes] =
           await Promise.all([
@@ -193,36 +234,52 @@ export default function Psicologo() {
             buscarLista("/api/pacientes"),
           ]);
 
-        if (!ativo) {
-          return;
-        }
+        if (!ativo) return;
 
-        // Procura o psicólogo logado pelo ID da sessão,
-        // em vez de assumir que ele é o primeiro da lista
         const psicologo = psicologos?.find(
-          (item) => Number(item.id_psicologo) === idPsicologo
+          (item) =>
+            Number(item.id_psicologo) === idPsicologo
         );
 
         if (psicologo) {
-          setNomePsicologo(psicologo.nome || "Psicólogo");
+          const nome = nomeDoPsicologo(psicologo);
+
+          setNomePsicologo(nome);
           setEspecialidade(psicologo.especialidade || "");
 
-          // Mantém o nome disponível para telas que ainda usam localStorage
-          salvarLocal("nome_usuario", psicologo.nome || "Psicólogo");
+          salvarLocal("nome_usuario", nome);
           salvarLocal("id_psicologo", String(idPsicologo));
         }
 
         setConsultas(listaConsultas ?? []);
-        setTotalPacientes(listaPacientes ? listaPacientes.length : null);
-      } catch (error) {
-        console.error("Erro ao carregar o painel do psicólogo:", error);
 
-        // Sem conseguir confirmar a sessão, não exibe a área restrita
-        redirecionando = true;
-        router.replace("/login");
+        if (listaPacientes !== null) {
+          setTotalPacientes(listaPacientes.length);
+        } else {
+          setTotalPacientes(null);
+        }
+
+        if (
+          listaConsultas === null ||
+          listaPacientes === null
+        ) {
+          setErroCarregamento(
+            "Algumas informações não puderam ser carregadas. Atualize a página ou verifique sua sessão."
+          );
+        }
+      } catch (erro) {
+        console.error(
+          "Erro ao carregar o painel do psicólogo:",
+          erro
+        );
+
+        if (ativo) {
+          setErroCarregamento(
+            "Não foi possível carregar os dados do painel."
+          );
+        }
       } finally {
-        // Se está redirecionando, mantém a tela de carregamento
-        if (ativo && !redirecionando) {
+        if (ativo) {
           setCarregando(false);
         }
       }
@@ -235,11 +292,19 @@ export default function Psicologo() {
     };
   }, [router]);
 
+  /* =========================================================
+     ENCERRAR SESSÃO
+     ========================================================= */
+
   async function sair() {
     try {
-      await fetch("/api/sessao", { method: "DELETE" });
-    } catch (error) {
-      console.error("Erro ao encerrar sessão:", error);
+      await fetch("/api/sessao", {
+        method: "DELETE",
+        cache: "no-store",
+        credentials: "include",
+      });
+    } catch (erro) {
+      console.error("Erro ao encerrar sessão:", erro);
     } finally {
       removerLocal("logado");
       removerLocal("tipo_usuario");
@@ -250,27 +315,47 @@ export default function Psicologo() {
     }
   }
 
-  /* ---------- MÉTRICAS E AGENDA ---------- */
+  /* =========================================================
+     MÉTRICAS E AGENDA
+     ========================================================= */
 
   const { consultasHoje, metricas } = useMemo(() => {
     const hoje = hojeISO();
 
     const doDia = consultas
-      .filter(
-        (c) =>
-          diaDaConsulta(c.data_consulta) === hoje &&
-          statusDaConsulta(c) !== "cancelada"
+      .filter((consulta) => {
+        const status = statusDaConsulta(consulta);
+
+        return (
+          diaDaConsulta(consulta.data_consulta) === hoje &&
+          status !== "cancelada" &&
+          status !== "cancelado"
+        );
+      })
+      .sort((a, b) =>
+        String(a.horario || "").localeCompare(
+          String(b.horario || "")
+        )
+      );
+
+    const proximas = consultas.filter((consulta) => {
+      const status = statusDaConsulta(consulta);
+
+      return (
+        diaDaConsulta(consulta.data_consulta) > hoje &&
+        [
+          "agendada",
+          "agendado",
+          "confirmada",
+          "confirmado",
+        ].includes(status)
+      );
+    });
+
+    const realizadas = consultas.filter((consulta) =>
+      ["realizada", "realizado"].includes(
+        statusDaConsulta(consulta)
       )
-      .sort((a, b) => String(a.horario).localeCompare(String(b.horario)));
-
-    const proximas = consultas.filter(
-      (c) =>
-        diaDaConsulta(c.data_consulta) > hoje &&
-        statusDaConsulta(c) === "agendada"
-    );
-
-    const realizadas = consultas.filter(
-      (c) => statusDaConsulta(c) === "realizada"
     );
 
     return {
@@ -278,14 +363,17 @@ export default function Psicologo() {
       metricas: [
         {
           titulo: "Meus pacientes",
-          valor: totalPacientes === null ? "–" : String(totalPacientes),
-          descricao: "Pacientes cadastrados",
+          valor:
+            totalPacientes === null
+              ? "–"
+              : String(totalPacientes),
+          descricao: "Pacientes vinculados disponíveis",
           icone: Users,
         },
         {
           titulo: "Consultas hoje",
           valor: String(doDia.length),
-          descricao: "Atendimentos agendados",
+          descricao: "Atendimentos previstos para hoje",
           icone: CalendarCheck2,
         },
         {
@@ -304,23 +392,29 @@ export default function Psicologo() {
     };
   }, [consultas, totalPacientes]);
 
-  /* ---------- TELA DE CARREGAMENTO ---------- */
+  /* =========================================================
+     CARREGAMENTO
+     ========================================================= */
 
   if (carregando) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f7f8fa] text-gray-500">
-        Carregando...
+        Carregando painel do psicólogo...
       </div>
     );
   }
 
-  /* ---------- PÁGINA ---------- */
+  /* =========================================================
+     INTERFACE
+     ========================================================= */
 
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-gray-800">
       {/* MENU MOBILE */}
       {menuAberto && (
-        <div
+        <button
+          type="button"
+          aria-label="Fechar menu"
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
           onClick={() => setMenuAberto(false)}
         />
@@ -332,13 +426,11 @@ export default function Psicologo() {
           menuAberto ? "translate-x-0" : "-translate-x-full"
         } lg:translate-x-0`}
       >
-        {/* TOPO */}
         <div className="flex h-20 items-center justify-between border-b border-white/10 px-6">
           <div>
             <p className="text-xs font-medium uppercase tracking-widest text-blue-200">
               Clínica
             </p>
-
             <p className="text-xl font-bold">Clínica Psi</p>
           </div>
 
@@ -360,8 +452,9 @@ export default function Psicologo() {
             </div>
 
             <div className="min-w-0">
-              <p className="truncate font-semibold">{nomePsicologo}</p>
-
+              <p className="truncate font-semibold">
+                {nomePsicologo}
+              </p>
               <p className="truncate text-xs text-blue-200">
                 {especialidade || "Psicólogo"}
               </p>
@@ -369,7 +462,7 @@ export default function Psicologo() {
           </div>
         </div>
 
-        {/* MENU */}
+        {/* MENU LATERAL: NAVEGA NA MESMA ABA */}
         <nav className="flex-1 overflow-y-auto p-4">
           <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-blue-200">
             Menu principal
@@ -392,15 +485,16 @@ export default function Psicologo() {
                   }`}
                 >
                   <Icone size={19} />
-
-                  <span className="text-sm font-medium">{item.nome}</span>
+                  <span className="text-sm font-medium">
+                    {item.nome}
+                  </span>
                 </Link>
               );
             })}
           </div>
         </nav>
 
-        {/* RODAPÉ */}
+        {/* SAIR */}
         <div className="border-t border-white/10 p-4">
           <button
             type="button"
@@ -415,7 +509,7 @@ export default function Psicologo() {
 
       {/* CONTEÚDO */}
       <main className="min-h-screen lg:ml-72">
-        {/* HEADER MOBILE */}
+        {/* CABEÇALHO MOBILE */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm lg:hidden">
           <button
             type="button"
@@ -430,13 +524,31 @@ export default function Psicologo() {
             <p className="text-sm font-semibold text-[#1d3557]">
               {nomePsicologo}
             </p>
-
-            <p className="text-xs text-gray-500">Área profissional</p>
+            <p className="text-xs text-gray-500">
+              Área profissional
+            </p>
           </div>
         </header>
 
-        {/* CONTEÚDO PRINCIPAL */}
         <div className="p-5 md:p-8">
+          {/* MENSAGEM DE ERRO */}
+          {erroCarregamento && (
+            <div
+              role="alert"
+              className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+            >
+              <p>{erroCarregamento}</p>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="mt-2 font-semibold underline"
+              >
+                Tentar novamente
+              </button>
+            </div>
+          )}
+
+          {/* TÍTULO */}
           <div className="mb-8">
             <p className="mb-2 text-sm font-medium text-[#1d3557]">
               Área profissional
@@ -447,8 +559,8 @@ export default function Psicologo() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-gray-500">
-              Acompanhe seus atendimentos, pacientes e registros clínicos em
-              um único lugar.
+              Acompanhe seus atendimentos, pacientes e registros
+              clínicos em um único lugar.
             </p>
           </div>
 
@@ -486,13 +598,12 @@ export default function Psicologo() {
 
           {/* AGENDA */}
           <div className="mt-6 grid gap-6 xl:grid-cols-3">
-            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm xl:col-span-2">
-              <div className="flex items-center justify-between">
+            <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm xl:col-span-2">
+              <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">
                     Agenda de hoje
                   </h2>
-
                   <p className="mt-1 text-sm text-gray-500">
                     Seus próximos atendimentos
                   </p>
@@ -512,14 +623,12 @@ export default function Psicologo() {
                     className="mx-auto mb-3 text-gray-400"
                     size={30}
                   />
-
                   <p className="font-semibold text-gray-700">
                     Nenhum atendimento agendado
                   </p>
-
                   <p className="mt-1 text-sm text-gray-400">
-                    Quando houver consultas marcadas para hoje, elas aparecerão
-                    aqui.
+                    Quando houver consultas marcadas para hoje,
+                    elas aparecerão aqui.
                   </p>
                 </div>
               ) : (
@@ -530,16 +639,19 @@ export default function Psicologo() {
                       className="flex items-center gap-4 rounded-2xl border border-gray-100 p-4"
                     >
                       <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-xl bg-[#1d3557]/10 text-sm font-bold text-[#1d3557]">
-                        {String(consulta.horario || "").slice(0, 5) || "--:--"}
+                        {String(consulta.horario || "").slice(
+                          0,
+                          5
+                        ) || "--:--"}
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold text-gray-900">
                           {consulta.nome_paciente || "Paciente"}
                         </p>
-
                         <p className="truncate text-xs text-gray-500">
-                          {consulta.tipo_atendimento || "Atendimento"}
+                          {consulta.tipo_atendimento ||
+                            "Atendimento"}
                         </p>
                       </div>
 
@@ -554,19 +666,18 @@ export default function Psicologo() {
               <div className="mt-5">
                 <Link
                   href="/psicologo/consultas"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#1d3557]"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#1d3557] hover:underline"
                 >
-                  Acessar consultas
+                  Acessar consultas →
                 </Link>
               </div>
-            </div>
+            </section>
 
             {/* RESUMO */}
-            <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+            <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-bold text-gray-900">
                 Resumo profissional
               </h2>
-
               <p className="mt-1 text-sm text-gray-500">
                 Informações da sua área
               </p>
@@ -589,7 +700,6 @@ export default function Psicologo() {
                         <p className="font-semibold text-gray-800">
                           {item.titulo}
                         </p>
-
                         <p className="text-xs text-gray-500">
                           {item.descricao}
                         </p>
@@ -598,22 +708,21 @@ export default function Psicologo() {
                   );
                 })}
               </div>
-            </div>
+            </section>
           </div>
 
           {/* ACESSO RÁPIDO */}
-          <div className="mt-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+          <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
             <div className="mb-5">
               <h2 className="text-lg font-bold text-gray-900">
                 Acesso rápido
               </h2>
-
               <p className="mt-1 text-sm text-gray-500">
                 Acesse rapidamente as principais funções
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {ATALHOS.map((atalho) => {
                 const Icone = atalho.icone;
 
@@ -630,11 +739,9 @@ export default function Psicologo() {
                     <p className="font-semibold text-gray-900">
                       {atalho.titulo}
                     </p>
-
                     <p className="mt-1 text-sm text-gray-500">
                       {atalho.descricao}
                     </p>
-
                     <div className="mt-4 text-xs font-semibold text-[#1d3557]">
                       Acessar →
                     </div>
@@ -642,14 +749,14 @@ export default function Psicologo() {
                 );
               })}
             </div>
-          </div>
+          </section>
 
           {/* RODAPÉ */}
-          <div className="mt-8 border-t border-gray-200 pt-6 text-center text-xs text-gray-400">
+          <footer className="mt-8 border-t border-gray-200 pt-6 text-center text-xs text-gray-400">
             Clínica Psi • Área profissional
             <br />
             Sistema protegido para gerenciamento clínico.
-          </div>
+          </footer>
         </div>
       </main>
     </div>
