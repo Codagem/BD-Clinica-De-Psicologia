@@ -112,7 +112,7 @@ return ( <main className="min-h-screen bg-[#f5f1eb] flex items-center justify-ce
     )}
   </section>
 </main>
-```
+
 
 );
 }
@@ -140,7 +140,7 @@ fallback={ <main className="min-h-screen bg-[#f5f1eb] flex items-center justify-
 >
   <ConteudoConfirmacao />
 </Suspense>
-```
+
 
 );
 }
