@@ -1,10 +1,9 @@
 
 "use client";
 
-// =========================================
+// =====================================================
 // IMPORTAÇÕES
-// =========================================
-
+// =====================================================
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
@@ -13,17 +12,20 @@ import autoTable from "jspdf-autotable";
 import Sidebar from "../components/Sidebar";
 import Protegido from "../components/Protegido";
 
-// =========================================
-// UTILITÁRIOS
-// =========================================
+// =====================================================
+// FUNÇÕES AUXILIARES
+// =====================================================
 
 function formatarCPF(valor = "") {
   const cpf = String(valor).replace(/\D/g, "").slice(0, 11);
 
-  return cpf
-    .replace(/^(\d{3})(\d)/, "$1.$2")
-    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1-$2");
+  if (cpf.length <= 3) return cpf;
+  if (cpf.length <= 6) return cpf.replace(/^(\d{3})(\d+)$/, "$1.$2");
+  if (cpf.length <= 9) {
+    return cpf.replace(/^(\d{3})(\d{3})(\d+)$/, "$1.$2.$3");
+  }
+
+  return cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})$/, "$1.$2.$3-$4");
 }
 
 function formatarTelefone(valor = "") {
@@ -33,7 +35,6 @@ function formatarTelefone(valor = "") {
   if (telefone.length <= 6) {
     return `(${telefone.slice(0, 2)}) ${telefone.slice(2)}`;
   }
-
   if (telefone.length <= 10) {
     return `(${telefone.slice(0, 2)}) ${telefone.slice(2, 6)}-${telefone.slice(6)}`;
   }
@@ -52,7 +53,6 @@ function normalizarStatus(status) {
 function formatarData(data) {
   if (!data) return "-";
 
-  // Trata datas YYYY-MM-DD sem alterar o dia por causa do fuso horário.
   const texto = String(data).slice(0, 10);
   const partes = texto.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
@@ -60,11 +60,10 @@ function formatarData(data) {
     return `${partes[3]}/${partes[2]}/${partes[1]}`;
   }
 
-  const dataConvertida = new Date(data);
+  const convertida = new Date(data);
+  if (Number.isNaN(convertida.getTime())) return "-";
 
-  if (Number.isNaN(dataConvertida.getTime())) return "-";
-
-  return dataConvertida.toLocaleDateString("pt-BR");
+  return convertida.toLocaleDateString("pt-BR");
 }
 
 function formatarHora(hora) {
@@ -79,7 +78,7 @@ function formatarValor(valor) {
 }
 
 async function lerResposta(resposta) {
-  let dados;
+  let dados = {};
 
   try {
     dados = await resposta.json();
@@ -88,20 +87,19 @@ async function lerResposta(resposta) {
   }
 
   if (!resposta.ok) {
-    const mensagem =
+    throw new Error(
       dados?.erro ||
-      dados?.mensagem ||
-      `A operação falhou (HTTP ${resposta.status}).`;
-
-    throw new Error(mensagem);
+        dados?.mensagem ||
+        `A operação falhou (HTTP ${resposta.status}).`
+    );
   }
 
   return dados;
 }
 
-// =========================================
+// =====================================================
 // COMPONENTE PRINCIPAL
-// =========================================
+// =====================================================
 
 export default function Pacientes() {
   const [pacientes, setPacientes] = useState([]);
@@ -123,10 +121,11 @@ export default function Pacientes() {
   const [carregandoPacientes, setCarregandoPacientes] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [excluindoId, setExcluindoId] = useState(null);
+  const [enviandoEmailId, setEnviandoEmailId] = useState(null);
 
-  // =========================================
+  // =====================================================
   // CARREGAR PACIENTES
-  // =========================================
+  // =====================================================
 
   const carregarPacientes = useCallback(async () => {
     setCarregandoPacientes(true);
@@ -140,99 +139,79 @@ export default function Pacientes() {
       const dados = await lerResposta(resposta);
 
       if (!Array.isArray(dados)) {
-        throw new Error(
-          dados?.erro || "A API não retornou uma lista de pacientes."
-        );
+        throw new Error("A API não retornou uma lista de pacientes.");
       }
 
       setPacientes(dados);
     } catch (error) {
       console.error("Erro ao carregar pacientes:", error);
       toast.error(error.message || "Não foi possível carregar os pacientes.");
-      throw error;
     } finally {
       setCarregandoPacientes(false);
     }
   }, []);
 
-  // =========================================
+  // =====================================================
   // CARREGAR CONSULTAS
-  // =========================================
+  // =====================================================
 
   const carregarConsultas = useCallback(async () => {
     try {
       const resposta = await fetch("/api/consultas", {
-        method: "GET",
         cache: "no-store",
       });
 
       const dados = await lerResposta(resposta);
 
-      if (!Array.isArray(dados)) {
-        throw new Error("A API de consultas não retornou uma lista.");
-      }
-
-      setConsultas(dados);
+      setConsultas(Array.isArray(dados) ? dados : []);
     } catch (error) {
       console.error("Erro ao carregar consultas:", error);
       setConsultas([]);
     }
   }, []);
 
-  // =========================================
-  // CARREGAR FINANCEIRO
-  // =========================================
+  // =====================================================
+  // CARREGAR PAGAMENTOS
+  // =====================================================
 
   const carregarFinanceiro = useCallback(async () => {
     try {
       const resposta = await fetch("/api/financeiro", {
-        method: "GET",
         cache: "no-store",
       });
 
       const dados = await lerResposta(resposta);
-      const lista = Array.isArray(dados)
-        ? dados
-        : dados?.pagamentos;
+      const lista = Array.isArray(dados) ? dados : dados?.pagamentos;
 
-      if (!Array.isArray(lista)) {
-        throw new Error("A API financeira não retornou uma lista.");
-      }
-
-      setPagamentos(lista);
+      setPagamentos(Array.isArray(lista) ? lista : []);
     } catch (error) {
       console.error("Erro ao carregar pagamentos:", error);
       setPagamentos([]);
     }
   }, []);
 
-  // =========================================
+  // =====================================================
   // CARREGAR ANAMNESES
-  // =========================================
+  // =====================================================
 
   const carregarAnamneses = useCallback(async () => {
     try {
       const resposta = await fetch("/api/relatorio-anamnese", {
-        method: "GET",
         cache: "no-store",
       });
 
       const dados = await lerResposta(resposta);
 
-      if (!Array.isArray(dados)) {
-        throw new Error("A API de anamnese não retornou uma lista.");
-      }
-
-      setAnamneses(dados);
+      setAnamneses(Array.isArray(dados) ? dados : []);
     } catch (error) {
       console.error("Erro ao carregar anamneses:", error);
       setAnamneses([]);
     }
   }, []);
 
-  // =========================================
+  // =====================================================
   // CARREGAR DADOS INICIAIS
-  // =========================================
+  // =====================================================
 
   useEffect(() => {
     carregarPacientes();
@@ -246,9 +225,9 @@ export default function Pacientes() {
     carregarAnamneses,
   ]);
 
-  // =========================================
+  // =====================================================
   // LIMPAR FORMULÁRIO
-  // =========================================
+  // =====================================================
 
   function limparFormulario() {
     setNome("");
@@ -260,15 +239,25 @@ export default function Pacientes() {
     setMostrarFormulario(false);
   }
 
-  // =========================================
+  // =====================================================
   // CADASTRAR OU ATUALIZAR PACIENTE
-  // =========================================
+  // =====================================================
 
   async function cadastrarPaciente() {
     if (salvando) return;
 
     if (!nome.trim() || !dataNascimento || !cpf.trim()) {
       toast.error("Preencha nome, data de nascimento e CPF.");
+      return;
+    }
+
+    if (cpf.replace(/\D/g, "").length !== 11) {
+      toast.error("Informe um CPF com 11 números.");
+      return;
+    }
+
+    if (dataNascimento > new Date().toISOString().slice(0, 10)) {
+      toast.error("A data de nascimento não pode estar no futuro.");
       return;
     }
 
@@ -305,8 +294,6 @@ export default function Pacientes() {
       );
 
       limparFormulario();
-
-      // Atualiza a lista depois de confirmar que a API concluiu a operação.
       await carregarPacientes();
     } catch (error) {
       console.error("Erro ao salvar paciente:", error);
@@ -316,9 +303,51 @@ export default function Pacientes() {
     }
   }
 
-  // =========================================
+  // =====================================================
+  // REENVIAR CONFIRMAÇÃO DE E-MAIL
+  // =====================================================
+
+  async function reenviarConfirmacaoEmail(paciente) {
+    if (enviandoEmailId !== null) return;
+
+    const confirmar = window.confirm(
+      `Deseja enviar um e-mail de confirmação para ${paciente.nome_completo}?`
+    );
+
+    if (!confirmar) return;
+
+    setEnviandoEmailId(paciente.id_paciente);
+
+    try {
+      const resposta = await fetch(
+        "/api/admin/enviar-confirmacao-email",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id_paciente: paciente.id_paciente,
+          }),
+        }
+      );
+
+      const dados = await lerResposta(resposta);
+
+      toast.success(
+        dados?.mensagem || "Solicitação processada com sucesso."
+      );
+    } catch (error) {
+      console.error("Erro ao enviar confirmação:", error);
+      toast.error(error.message || "Não foi possível enviar o e-mail.");
+    } finally {
+      setEnviandoEmailId(null);
+    }
+  }
+
+  // =====================================================
   // EXCLUIR PACIENTE
-  // =========================================
+  // =====================================================
 
   async function deletarPaciente(id) {
     if (excluindoId !== null) return;
@@ -360,15 +389,13 @@ export default function Pacientes() {
     }
   }
 
-  // =========================================
+  // =====================================================
   // EDITAR PACIENTE
-  // =========================================
+  // =====================================================
 
   function editarPaciente(paciente) {
     setNome(paciente.nome_completo || "");
-    setDataNascimento(
-      String(paciente.data_nascimento || "").slice(0, 10)
-    );
+    setDataNascimento(String(paciente.data_nascimento || "").slice(0, 10));
     setCpf(paciente.cpf || "");
     setTelefone(paciente.telefone || "");
     setProfissao(paciente.profissao || "");
@@ -381,9 +408,9 @@ export default function Pacientes() {
     });
   }
 
-  // =========================================
-  // HISTÓRICO DO PACIENTE
-  // =========================================
+  // =====================================================
+  // HISTÓRICO
+  // =====================================================
 
   function abrirHistorico(paciente) {
     setPacienteHistorico(paciente);
@@ -402,23 +429,15 @@ export default function Pacientes() {
     window.location.href = "/consultas";
   }
 
-  // =========================================
+  // =====================================================
   // FILTROS E DADOS DO HISTÓRICO
-  // =========================================
+  // =====================================================
 
   const pacientesFiltrados = pacientes.filter((paciente) =>
     String(paciente.nome_completo || "")
       .toLowerCase()
       .includes(pesquisa.toLowerCase().trim())
   );
-
-  const anamneseDoPaciente = pacienteHistorico
-    ? anamneses.find(
-        (anamnese) =>
-          Number(anamnese.id_paciente) ===
-          Number(pacienteHistorico.id_paciente)
-      )
-    : null;
 
   const consultasDoPaciente = pacienteHistorico
     ? consultas.filter(
@@ -463,6 +482,14 @@ export default function Pacientes() {
     return dataB.localeCompare(dataA);
   })[0];
 
+  const anamneseDoPaciente = pacienteHistorico
+    ? anamneses.find(
+        (anamnese) =>
+          Number(anamnese.id_paciente) ===
+          Number(pacienteHistorico.id_paciente)
+      )
+    : null;
+
   const pagamentosDoPaciente = pacienteHistorico
     ? pagamentos.filter(
         (pagamento) =>
@@ -497,9 +524,9 @@ export default function Pacientes() {
     )
   )[0];
 
-  // =========================================
+  // =====================================================
   // EXPORTAR PDF
-  // =========================================
+  // =====================================================
 
   function exportarPDFPacientes() {
     try {
@@ -511,11 +538,11 @@ export default function Pacientes() {
       const doc = new jsPDF();
 
       doc.setFontSize(20);
-      doc.text("Clínica de Psicologia", 14, 20);
+      doc.text("Clinica de Psicologia", 14, 20);
 
       doc.setFontSize(11);
       doc.text(
-        `Relatório de Pacientes - ${new Date().toLocaleDateString("pt-BR")}`,
+        `Relatorio de Pacientes - ${new Date().toLocaleDateString("pt-BR")}`,
         14,
         30
       );
@@ -548,9 +575,9 @@ export default function Pacientes() {
     }
   }
 
-  // =========================================
+  // =====================================================
   // CORES DOS STATUS
-  // =========================================
+  // =====================================================
 
   function corStatus(status) {
     const valor = normalizarStatus(status);
@@ -579,6 +606,7 @@ export default function Pacientes() {
 
     if (valor === "pago") return "bg-green-100 text-green-700";
     if (valor === "pendente") return "bg-yellow-100 text-yellow-700";
+
     if (valor === "cancelado" || valor === "cancelada") {
       return "bg-red-100 text-red-700";
     }
@@ -586,9 +614,28 @@ export default function Pacientes() {
     return "bg-[#e8eadf] text-[#1d3557]";
   }
 
-  // =========================================
+  // =====================================================
+  // BOTÃO DE REENVIO DE E-MAIL
+  // =====================================================
+
+  function BotaoEmail({ paciente }) {
+    return (
+    <button
+    type="button"
+    onClick={() => reenviarConfirmacaoEmail(paciente)}
+    disabled={enviandoEmailId !== null}
+    className="w-full bg-indigo-600 text-white font-bold px-4 py-3 rounded-xl border-2 border-indigo-800 hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+    {enviandoEmailId === paciente.id_paciente
+    ? "Enviando confirmação..."
+    : "✉️ REENVIAR CONFIRMAÇÃO DE E-MAIL"} </button>
+    );
+    }
+
+
+  // =====================================================
   // INTERFACE
-  // =========================================
+  // =====================================================
 
   return (
     <Protegido>
@@ -597,7 +644,6 @@ export default function Pacientes() {
 
         <main className="md:ml-64 w-full min-w-0 p-4 pt-20 md:p-10">
           {/* CABEÇALHO */}
-
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 mb-8">
             <div>
               <p className="text-[#2b4c7e] font-semibold mb-2">
@@ -639,7 +685,6 @@ export default function Pacientes() {
           </div>
 
           {/* HISTÓRICO DO PACIENTE */}
-
           {pacienteHistorico && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
@@ -731,20 +776,21 @@ export default function Pacientes() {
 
                       <div className="space-y-3 text-sm">
                         <Info label="CPF" valor={pacienteHistorico.cpf || "-"} />
-
                         <Info
                           label="Nascimento"
                           valor={formatarData(pacienteHistorico.data_nascimento)}
                         />
-
                         <Info
                           label="Telefone"
                           valor={pacienteHistorico.telefone || "-"}
                         />
-
                         <Info
                           label="Profissão"
                           valor={pacienteHistorico.profissao || "-"}
+                        />
+                        <Info
+                          label="E-mail"
+                          valor={pacienteHistorico.email || "-"}
                         />
                       </div>
                     </div>
@@ -759,12 +805,10 @@ export default function Pacientes() {
                           label="Motivo"
                           valor={anamneseDoPaciente?.motivo_consulta || "-"}
                         />
-
                         <Info
                           label="Tempo do problema"
                           valor={anamneseDoPaciente?.tempo_problema || "-"}
                         />
-
                         <Info
                           label="Ansiedade"
                           valor={anamneseDoPaciente?.ansiedade || "-"}
@@ -786,7 +830,6 @@ export default function Pacientes() {
                               : "-"
                           }
                         />
-
                         <Info
                           label="Próxima consulta"
                           valor={
@@ -795,7 +838,6 @@ export default function Pacientes() {
                               : "-"
                           }
                         />
-
                         <Info
                           label="Pendentes"
                           valor={consultasPendentes.length}
@@ -813,17 +855,14 @@ export default function Pacientes() {
                           label="Total recebido"
                           valor={formatarValor(totalRecebidoPaciente)}
                         />
-
                         <Info
                           label="Pendente"
                           valor={formatarValor(totalPendentePaciente)}
                         />
-
                         <Info
                           label="Pagamentos"
                           valor={pagamentosDoPaciente.length}
                         />
-
                         <Info
                           label="Último pagamento"
                           valor={
@@ -837,7 +876,6 @@ export default function Pacientes() {
                   </div>
 
                   {/* LINHA DO TEMPO */}
-
                   <div className="lg:col-span-2 bg-[#fbfaf7] rounded-3xl p-4 md:p-5 border border-gray-100 min-w-0">
                     <h3 className="text-xl font-bold text-[#1d3557] mb-4">
                       Linha do tempo de consultas
@@ -893,7 +931,6 @@ export default function Pacientes() {
                     </div>
 
                     {/* PAGAMENTOS */}
-
                     <div className="mt-6 bg-white rounded-3xl p-5 border border-gray-100">
                       <h3 className="text-xl font-bold text-[#1d3557] mb-4">
                         Pagamentos do paciente
@@ -940,23 +977,16 @@ export default function Pacientes() {
           )}
 
           {/* INDICADORES */}
-
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-8">
-            <ResumoCard
-              titulo="Total de pacientes"
-              valor={pacientes.length}
-            />
-
+            <ResumoCard titulo="Total de pacientes" valor={pacientes.length} />
             <ResumoCard
               titulo="Resultados da busca"
               valor={pacientesFiltrados.length}
             />
-
             <ResumoCard titulo="Status" valor="Base ativa" destaque />
           </div>
 
           {/* FORMULÁRIO */}
-
           {mostrarFormulario && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
@@ -982,7 +1012,7 @@ export default function Pacientes() {
                   type="date"
                   aria-label="Data de nascimento"
                   value={dataNascimento}
-                  max={new Date().toLocaleDateString("en-CA")}
+                  max={new Date().toISOString().slice(0, 10)}
                   className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
                   onChange={(e) => setDataNascimento(e.target.value)}
                 />
@@ -1006,9 +1036,7 @@ export default function Pacientes() {
                   value={telefone}
                   maxLength={16}
                   className="border border-gray-200 p-4 rounded-2xl text-black bg-[#fbfaf7] outline-none focus:border-[#1d3557]"
-                  onChange={(e) =>
-                    setTelefone(formatarTelefone(e.target.value))
-                  }
+                  onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
                 />
 
                 <input
@@ -1049,7 +1077,6 @@ export default function Pacientes() {
           )}
 
           {/* PESQUISA */}
-
           <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
             <label
               htmlFor="pesquisa-pacientes"
@@ -1069,7 +1096,6 @@ export default function Pacientes() {
           </div>
 
           {/* LISTA DE PACIENTES */}
-
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-5 md:p-6 border-b border-gray-100">
               <h2 className="text-2xl font-bold text-[#1d3557]">
@@ -1088,9 +1114,8 @@ export default function Pacientes() {
             ) : (
               <>
                 {/* TABELA DESKTOP */}
-
                 <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full min-w-[1000px]">
+                  <table className="w-full min-w-[1200px]">
                     <thead className="bg-[#f3f1eb] text-[#1d3557]">
                       <tr>
                         <th className="text-left p-4">ID</th>
@@ -1122,7 +1147,6 @@ export default function Pacientes() {
                                 <p className="font-semibold text-[#1d3557]">
                                   {paciente.nome_completo || "-"}
                                 </p>
-
                                 <p className="text-xs text-gray-500">
                                   Paciente #{paciente.id_paciente}
                                 </p>
@@ -1149,7 +1173,7 @@ export default function Pacientes() {
                               <button
                                 type="button"
                                 onClick={() => abrirHistorico(paciente)}
-                                className="bg-[#1d3557] text-white px-4 py-2 rounded-2xl hover:opacity-90 transition"
+                                className="bg-[#1d3557] text-white px-4 py-2 rounded-xl hover:opacity-90 transition"
                               >
                                 Histórico
                               </button>
@@ -1157,10 +1181,12 @@ export default function Pacientes() {
                               <button
                                 type="button"
                                 onClick={() => editarPaciente(paciente)}
-                                className="bg-[#2b4c7e] text-white px-4 py-2 rounded-2xl hover:opacity-90 transition"
+                                className="bg-[#2b4c7e] text-white px-4 py-2 rounded-xl hover:opacity-90 transition"
                               >
                                 Editar
                               </button>
+
+                              <BotaoEmail paciente={paciente} />
 
                               <button
                                 type="button"
@@ -1168,7 +1194,7 @@ export default function Pacientes() {
                                 onClick={() =>
                                   deletarPaciente(paciente.id_paciente)
                                 }
-                                className="bg-red-500 text-white px-4 py-2 rounded-2xl hover:bg-red-600 transition disabled:opacity-50"
+                                className="bg-red-500 text-white px-4 py-2 rounded-xl hover:bg-red-600 transition disabled:opacity-50"
                               >
                                 {excluindoId === paciente.id_paciente
                                   ? "Excluindo..."
@@ -1194,7 +1220,6 @@ export default function Pacientes() {
                 </div>
 
                 {/* CARDS MOBILE */}
-
                 <div className="md:hidden p-4 space-y-4">
                   {pacientesFiltrados.map((paciente) => (
                     <motion.div
@@ -1224,14 +1249,11 @@ export default function Pacientes() {
                           label="Nascimento"
                           valor={formatarData(paciente.data_nascimento)}
                         />
-
                         <Info label="CPF" valor={paciente.cpf || "-"} />
-
                         <Info
                           label="Telefone"
                           valor={paciente.telefone || "-"}
                         />
-
                         <Info
                           label="Profissão"
                           valor={paciente.profissao || "-"}
@@ -1247,28 +1269,26 @@ export default function Pacientes() {
                           Histórico
                         </button>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <button
-                            type="button"
-                            onClick={() => editarPaciente(paciente)}
-                            className="bg-[#2b4c7e] text-white py-3 rounded-2xl hover:opacity-90 transition"
-                          >
-                            Editar
-                          </button>
+                        <button
+                          type="button"
+                          onClick={() => editarPaciente(paciente)}
+                          className="bg-[#2b4c7e] text-white py-3 rounded-2xl hover:opacity-90 transition"
+                        >
+                          Editar paciente
+                        </button>
 
-                          <button
-                            type="button"
-                            disabled={excluindoId !== null}
-                            onClick={() =>
-                              deletarPaciente(paciente.id_paciente)
-                            }
-                            className="bg-red-500 text-white py-3 rounded-2xl hover:bg-red-600 transition disabled:opacity-50"
-                          >
-                            {excluindoId === paciente.id_paciente
-                              ? "Excluindo..."
-                              : "Excluir"}
-                          </button>
-                        </div>
+                        <BotaoEmail paciente={paciente} />
+
+                        <button
+                          type="button"
+                          disabled={excluindoId !== null}
+                          onClick={() => deletarPaciente(paciente.id_paciente)}
+                          className="bg-red-500 text-white py-3 rounded-2xl hover:bg-red-600 transition disabled:opacity-50"
+                        >
+                          {excluindoId === paciente.id_paciente
+                            ? "Excluindo..."
+                            : "Excluir paciente"}
+                        </button>
                       </div>
                     </motion.div>
                   ))}
@@ -1288,9 +1308,9 @@ export default function Pacientes() {
   );
 }
 
-// =========================================
+// =====================================================
 // CARD DE RESUMO
-// =========================================
+// =====================================================
 
 function ResumoCard({ titulo, valor, destaque }) {
   return (
@@ -1312,9 +1332,9 @@ function ResumoCard({ titulo, valor, destaque }) {
   );
 }
 
-// =========================================
+// =====================================================
 // CARD DO HISTÓRICO
-// =========================================
+// =====================================================
 
 function HistoricoCard({ titulo, valor, descricao, destaque }) {
   return (
@@ -1344,14 +1364,15 @@ function HistoricoCard({ titulo, valor, descricao, destaque }) {
   );
 }
 
-// =========================================
-// INFORMAÇÃO
-// =========================================
+// =====================================================
+// COMPONENTE DE INFORMAÇÃO
+// =====================================================
 
 function Info({ label, valor }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-2">
       <span className="text-gray-500 shrink-0">{label}</span>
+
       <span className="text-[#1d3557] font-medium text-right break-words min-w-0">
         {valor}
       </span>
