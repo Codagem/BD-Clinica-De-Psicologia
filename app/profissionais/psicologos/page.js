@@ -1,7 +1,18 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
+
+const FORMULARIO_INICIAL = {
+  nome: "",
+  cpf: "",
+  data_nascimento: "",
+  crp: "",
+  especialidade: "",
+  telefone: "",
+  email: "",
+};
 
 export default function PsicologosPage() {
   const [psicologos, setPsicologos] = useState([]);
@@ -14,32 +25,31 @@ export default function PsicologosPage() {
   const [erroFormulario, setErroFormulario] = useState("");
 
   const [formulario, setFormulario] = useState({
-    nome: "",
-    cpf: "",
-    data_nascimento: "",
-    crp: "",
-    especialidade: "",
-    telefone: "",
-    email: "",
+    ...FORMULARIO_INICIAL,
   });
 
   async function carregarPsicologos() {
     try {
-      setCarregando(true);
       setErro("");
 
-      const resposta = await fetch("/api/profissionais");
-
-      if (!resposta.ok) {
-        throw new Error("Erro ao buscar psicólogos.");
-      }
+      const resposta = await fetch("/api/profissionais", {
+        cache: "no-store",
+      });
 
       const dados = await resposta.json();
 
+      if (!resposta.ok) {
+        throw new Error(
+          dados.erro || "Não foi possível carregar os psicólogos."
+        );
+      }
+
       setPsicologos(dados.psicologos || []);
     } catch (error) {
-      console.error(error);
-      setErro("Não foi possível carregar os psicólogos.");
+      console.error("Erro ao carregar psicólogos:", error);
+      setErro(
+        error.message || "Não foi possível carregar os psicólogos."
+      );
     } finally {
       setCarregando(false);
     }
@@ -52,9 +62,7 @@ export default function PsicologosPage() {
   function formatarCPF(valor) {
     const numeros = valor.replace(/\D/g, "").slice(0, 11);
 
-    if (numeros.length <= 3) {
-      return numeros;
-    }
+    if (numeros.length <= 3) return numeros;
 
     if (numeros.length <= 6) {
       return `${numeros.slice(0, 3)}.${numeros.slice(3)}`;
@@ -64,15 +72,13 @@ export default function PsicologosPage() {
       return `${numeros.slice(0, 3)}.${numeros.slice(3, 6)}.${numeros.slice(6)}`;
     }
 
-    return `${numeros.slice(0, 3)}.${numeros.slice(3, 6)}.${numeros.slice(6, 9)}-${numeros.slice(9)}`;
+    return `${numeros.slice(0, 3)}.${numeros.slice(3, 6)}.${numeros.slice(6, 9)}-${numeros.slice(9, 11)}`;
   }
 
   function formatarTelefone(valor) {
     const numeros = valor.replace(/\D/g, "").slice(0, 11);
 
-    if (numeros.length <= 2) {
-      return numeros;
-    }
+    if (numeros.length <= 2) return numeros;
 
     if (numeros.length <= 7) {
       return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
@@ -93,19 +99,9 @@ export default function PsicologosPage() {
   }
 
   function abrirModal() {
+    setFormulario({ ...FORMULARIO_INICIAL });
     setMensagem("");
     setErroFormulario("");
-
-    setFormulario({
-      nome: "",
-      cpf: "",
-      data_nascimento: "",
-      crp: "",
-      especialidade: "",
-      telefone: "",
-      email: "",
-    });
-
     setMostrarModal(true);
   }
 
@@ -120,6 +116,8 @@ export default function PsicologosPage() {
   async function cadastrarPsicologo(event) {
     event.preventDefault();
 
+    if (salvando) return;
+
     setSalvando(true);
     setMensagem("");
     setErroFormulario("");
@@ -132,43 +130,43 @@ export default function PsicologosPage() {
         },
         body: JSON.stringify({
           tipo: "Psicólogo",
-          nome: formulario.nome,
+          nome: formulario.nome.trim(),
           cpf: formulario.cpf,
           data_nascimento: formulario.data_nascimento,
-          crp: formulario.crp,
-          especialidade: formulario.especialidade,
-          telefone: formulario.telefone,
-          email: formulario.email,
+          crp: formulario.crp.trim(),
+          especialidade: formulario.especialidade.trim(),
+          telefone: formulario.telefone.trim(),
+          email: formulario.email.trim(),
         }),
       });
 
-      const dados = await resposta.json();
+      const dados = await resposta.json().catch(() => ({}));
 
       if (!resposta.ok) {
-        throw new Error(dados.erro || "Erro ao cadastrar psicólogo.");
+        throw new Error(
+          dados.erro ||
+            `Erro ao cadastrar. Código HTTP: ${resposta.status}`
+        );
       }
 
-      setMensagem("Psicólogo cadastrado com sucesso!");
+      setMensagem(
+        dados.mensagem || "Psicólogo cadastrado com sucesso!"
+      );
 
-      setFormulario({
-        nome: "",
-        cpf: "",
-        data_nascimento: "",
-        crp: "",
-        especialidade: "",
-        telefone: "",
-        email: "",
-      });
+      setFormulario({ ...FORMULARIO_INICIAL });
 
       await carregarPsicologos();
 
-      setTimeout(() => {
+      window.setTimeout(() => {
         setMostrarModal(false);
         setMensagem("");
-      }, 1000);
+      }, 1200);
     } catch (error) {
-      console.error(error);
-      setErroFormulario(error.message);
+      console.error("Erro no cadastro de psicólogo:", error);
+
+      setErroFormulario(
+        error.message || "Não foi possível cadastrar o psicólogo."
+      );
     } finally {
       setSalvando(false);
     }
@@ -178,73 +176,68 @@ export default function PsicologosPage() {
     <>
       <Sidebar />
 
-      <main className="min-h-screen bg-[#f7f8fa] p-6 md:ml-64">
-        <div className="max-w-7xl mx-auto">
-
+      <main className="min-h-screen bg-[#f7f8fa] p-4 md:ml-64 md:p-6">
+        <div className="mx-auto max-w-7xl">
           {/* CABEÇALHO */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-3xl font-bold text-[#1d3557]">
                 Psicólogos
               </h1>
 
-              <p className="text-gray-500 mt-1">
+              <p className="mt-1 text-gray-500">
                 Gerencie os psicólogos cadastrados na clínica.
               </p>
             </div>
 
             <button
+              type="button"
               onClick={abrirModal}
-              className="bg-[#1d3557] text-white px-6 py-3 rounded-2xl hover:bg-[#16304d] transition"
+              className="rounded-2xl bg-[#1d3557] px-6 py-3 font-semibold text-white transition hover:bg-[#16304d]"
             >
               + Cadastrar psicólogo
             </button>
           </div>
 
           {/* RESUMO */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="mb-8 grid grid-cols-1 gap-5 md:grid-cols-3">
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
               <p className="text-sm text-gray-500">
                 Total de psicólogos
               </p>
 
-              <p className="text-3xl font-bold text-[#1d3557] mt-2">
+              <p className="mt-2 text-3xl font-bold text-[#1d3557]">
                 {psicologos.length}
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
               <p className="text-sm text-gray-500">
                 Psicólogos cadastrados
               </p>
 
-              <p className="text-3xl font-bold text-[#1d3557] mt-2">
+              <p className="mt-2 text-3xl font-bold text-[#1d3557]">
                 {psicologos.length}
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <p className="text-sm text-gray-500">
-                Status
-              </p>
+            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+              <p className="text-sm text-gray-500">Status</p>
 
-              <p className="text-lg font-semibold text-green-600 mt-3">
+              <p className="mt-3 text-lg font-semibold text-green-600">
                 Sistema ativo
               </p>
             </div>
-
           </div>
 
-          {/* LISTA */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-
-            <div className="p-6 border-b border-gray-100">
+          {/* LISTA DE PSICÓLOGOS */}
+          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <div className="border-b border-gray-100 p-6">
               <h2 className="text-xl font-semibold text-[#1d3557]">
                 Psicólogos cadastrados
               </h2>
 
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="mt-1 text-sm text-gray-500">
                 Lista dos profissionais registrados no sistema.
               </p>
             </div>
@@ -254,8 +247,16 @@ export default function PsicologosPage() {
                 Carregando psicólogos...
               </div>
             ) : erro ? (
-              <div className="p-10 text-center text-red-500">
-                {erro}
+              <div className="p-6 text-center text-red-600">
+                <p>{erro}</p>
+
+                <button
+                  type="button"
+                  onClick={carregarPsicologos}
+                  className="mt-3 font-semibold underline"
+                >
+                  Tentar novamente
+                </button>
               </div>
             ) : psicologos.length === 0 ? (
               <div className="p-10 text-center text-gray-500">
@@ -263,49 +264,35 @@ export default function PsicologosPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-
                 <table className="w-full">
-
                   <thead className="bg-[#f7f8fa]">
                     <tr>
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                        Nome
-                      </th>
-
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                        CRP
-                      </th>
-
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                        Especialidade
-                      </th>
-
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                        Telefone
-                      </th>
-
-                      <th className="text-left px-6 py-4 text-sm font-semibold text-gray-600">
-                        E-mail
-                      </th>
-
-                      <th className="text-right px-6 py-4 text-sm font-semibold text-gray-600">
-                        Ações
-                      </th>
+                      {[
+                        "Nome",
+                        "CRP",
+                        "Especialidade",
+                        "Telefone",
+                        "E-mail",
+                        "Ações",
+                      ].map((titulo) => (
+                        <th
+                          key={titulo}
+                          className="whitespace-nowrap px-6 py-4 text-left text-sm font-semibold text-gray-600"
+                        >
+                          {titulo}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
 
                   <tbody>
-
                     {psicologos.map((psicologo) => (
                       <tr
                         key={psicologo.id_psicologo}
-                        className="border-t border-gray-100 hover:bg-gray-50 transition"
+                        className="border-t border-gray-100 transition hover:bg-gray-50"
                       >
-
-                        <td className="px-6 py-5">
-                          <div className="font-semibold text-[#1d3557]">
-                            {psicologo.nome}
-                          </div>
+                        <td className="px-6 py-5 font-semibold text-[#1d3557]">
+                          {psicologo.nome}
                         </td>
 
                         <td className="px-6 py-5 text-gray-600">
@@ -324,50 +311,51 @@ export default function PsicologosPage() {
                           {psicologo.email || "—"}
                         </td>
 
-                        <td className="px-6 py-5 text-right">
-                          <button
-                            className="text-[#1d3557] font-medium hover:underline"
-                          >
-                            Editar
-                          </button>
+                        <td className="px-6 py-5 text-gray-500">
+                          —
                         </td>
-
                       </tr>
                     ))}
-
                   </tbody>
-
                 </table>
-
               </div>
             )}
-
           </div>
-
         </div>
       </main>
 
       {/* MODAL DE CADASTRO */}
       {mostrarModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-
-          <div className="bg-white text-gray-900 w-full max-w-2xl rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto [&_label]:!text-gray-700 [&_p]:!text-gray-600 [&_input]:!text-gray-900 [&_select]:!text-gray-900 [&_textarea]:!text-gray-900">
-
-            {/* CABEÇALHO DO MODAL */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              !salvando
+            ) {
+              fecharModal();
+            }
+          }}
+        >
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white text-gray-900 shadow-2xl">
+            {/* CABEÇALHO */}
+            <div className="flex items-center justify-between border-b border-gray-100 p-6">
               <div>
                 <h2 className="text-2xl font-bold text-[#1d3557]">
                   Cadastrar psicólogo
                 </h2>
 
-                <p className="text-sm text-gray-500 mt-1">
-                  Cadastre um novo psicólogo na clínica.
+                <p className="mt-1 text-sm text-gray-500">
+                  Preencha os dados do profissional.
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={fecharModal}
-                className="text-gray-400 hover:text-gray-700 text-2xl"
+                disabled={salvando}
+                aria-label="Fechar formulário"
+                className="rounded-lg px-3 py-1 text-2xl text-gray-500 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-50"
               >
                 ×
               </button>
@@ -376,36 +364,37 @@ export default function PsicologosPage() {
             {/* FORMULÁRIO */}
             <form
               onSubmit={cadastrarPsicologo}
-              className="p-6 space-y-5 text-gray-900"
+              className="space-y-5 p-6"
             >
-
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
                   Nome completo *
                 </label>
 
                 <input
                   type="text"
                   required
+                  autoComplete="name"
                   value={formulario.nome}
                   onChange={(e) =>
                     atualizarCampo("nome", e.target.value)
                   }
                   placeholder="Digite o nome completo"
-                  className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white placeholder-gray-400 outline-none focus:border-[#1d3557]"
+                  className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 outline-none focus:border-[#1d3557] focus:ring-2 focus:ring-[#1d3557]/10"
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
                     CPF *
                   </label>
 
                   <input
                     type="text"
                     required
+                    inputMode="numeric"
+                    autoComplete="off"
                     value={formulario.cpf}
                     onChange={(e) =>
                       atualizarCampo(
@@ -414,12 +403,13 @@ export default function PsicologosPage() {
                       )
                     }
                     placeholder="000.000.000-00"
-                    className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white placeholder-gray-400 outline-none focus:border-[#1d3557]"
+                    maxLength={14}
+                    className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 outline-none focus:border-[#1d3557] focus:ring-2 focus:ring-[#1d3557]/10"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
                     Data de nascimento *
                   </label>
 
@@ -433,16 +423,14 @@ export default function PsicologosPage() {
                         e.target.value
                       )
                     }
-                    className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white outline-none focus:border-[#1d3557]"
+                    className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 outline-none focus:border-[#1d3557] focus:ring-2 focus:ring-[#1d3557]/10"
                   />
                 </div>
-
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
                     CRP *
                   </label>
 
@@ -454,12 +442,12 @@ export default function PsicologosPage() {
                       atualizarCampo("crp", e.target.value)
                     }
                     placeholder="Ex.: CRP-02/12345"
-                    className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white placeholder-gray-400 outline-none focus:border-[#1d3557]"
+                    className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 outline-none focus:border-[#1d3557] focus:ring-2 focus:ring-[#1d3557]/10"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
                     Especialidade
                   </label>
 
@@ -473,21 +461,20 @@ export default function PsicologosPage() {
                       )
                     }
                     placeholder="Ex.: Psicologia infantil"
-                    className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white placeholder-gray-400 outline-none focus:border-[#1d3557]"
+                    className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 outline-none focus:border-[#1d3557] focus:ring-2 focus:ring-[#1d3557]/10"
                   />
                 </div>
-
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
                     Telefone
                   </label>
 
                   <input
-                    type="text"
+                    type="tel"
+                    autoComplete="tel"
                     value={formulario.telefone}
                     onChange={(e) =>
                       atualizarCampo(
@@ -496,49 +483,54 @@ export default function PsicologosPage() {
                       )
                     }
                     placeholder="(81) 99999-9999"
-                    className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white placeholder-gray-400 outline-none focus:border-[#1d3557]"
+                    className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 outline-none focus:border-[#1d3557] focus:ring-2 focus:ring-[#1d3557]/10"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
                     E-mail
                   </label>
 
                   <input
                     type="email"
+                    autoComplete="email"
                     value={formulario.email}
                     onChange={(e) =>
                       atualizarCampo("email", e.target.value)
                     }
                     placeholder="exemplo@email.com"
-                    className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white placeholder-gray-400 outline-none focus:border-[#1d3557]"
+                    className="w-full rounded-2xl border border-gray-200 bg-white p-4 text-gray-900 outline-none focus:border-[#1d3557] focus:ring-2 focus:ring-[#1d3557]/10"
                   />
                 </div>
-
               </div>
 
               {/* MENSAGENS */}
               {erroFormulario && (
-                <div className="bg-red-50 border border-red-200 text-red-600 rounded-2xl p-4">
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700"
+                >
                   {erroFormulario}
                 </div>
               )}
 
               {mensagem && (
-                <div className="bg-green-50 border border-green-200 text-green-600 rounded-2xl p-4">
+                <div
+                  role="status"
+                  className="rounded-2xl border border-green-200 bg-green-50 p-4 text-green-700"
+                >
                   {mensagem}
                 </div>
               )}
 
               {/* BOTÕES */}
-              <div className="flex flex-col-reverse md:flex-row md:justify-end gap-3 pt-2">
-
+              <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 md:flex-row md:justify-end">
                 <button
                   type="button"
                   onClick={fecharModal}
                   disabled={salvando}
-                  className="px-6 py-3 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition disabled:opacity-50"
+                  className="rounded-2xl border border-gray-200 px-6 py-3 font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancelar
                 </button>
@@ -546,15 +538,14 @@ export default function PsicologosPage() {
                 <button
                   type="submit"
                   disabled={salvando}
-                  className="px-6 py-3 rounded-2xl bg-[#1d3557] text-white hover:bg-[#16304d] transition disabled:opacity-50"
+                  className="rounded-2xl bg-[#1d3557] px-6 py-3 font-semibold text-white transition hover:bg-[#16304d] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {salvando ? "Salvando..." : "Cadastrar psicólogo"}
+                  {salvando
+                    ? "Salvando..."
+                    : "Cadastrar psicólogo"}
                 </button>
-
               </div>
-
             </form>
-
           </div>
         </div>
       )}
