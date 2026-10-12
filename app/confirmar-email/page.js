@@ -20,7 +20,7 @@ const [mensagem, setMensagem] = useState(
 useEffect(() => {
 let ativo = true;
 
-```
+
 async function confirmar() {
   if (!token) {
     setStatus("erro");
@@ -72,13 +72,13 @@ confirmar();
 return () => {
   ativo = false;
 };
-```
+
 
 }, [token]);
 
 return ( <main className="min-h-screen bg-[#f5f1eb] flex items-center justify-center p-4"> <section className="w-full max-w-lg rounded-3xl bg-white p-8 text-center shadow-xl"> <div className="mb-4 text-5xl text-[#1d3557]">Ψ</div>
 
-```
+
     <h1 className="text-3xl font-serif text-[#1d3557]">
       Confirmação de e-mail
     </h1>
@@ -126,7 +126,7 @@ return (
 <Suspense
 fallback={ <main className="min-h-screen bg-[#f5f1eb] flex items-center justify-center p-4"> <section className="w-full max-w-lg rounded-3xl bg-white p-8 text-center shadow-xl"> <div className="mb-4 text-5xl text-[#1d3557]">Ψ</div>
 
-```
+
         <h1 className="text-3xl font-serif text-[#1d3557]">
           Confirmação de e-mail
         </h1>
