@@ -332,7 +332,7 @@ export default function EstagiariosPage() {
       {modalAberto && (
         <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
 
-          <div className="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl">
+          <div className="bg-white text-gray-900 w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl [&_label]:!text-gray-700 [&_p]:!text-gray-600 [&_input]:!text-gray-900 [&_select]:!text-gray-900 [&_textarea]:!text-gray-900">
 
             {/* CABEÇALHO DO MODAL */}
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -359,7 +359,7 @@ export default function EstagiariosPage() {
             {/* FORMULÁRIO */}
             <form
               onSubmit={cadastrarEstagiario}
-              className="p-6"
+              className="p-6 text-gray-900"
             >
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

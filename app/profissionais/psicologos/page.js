@@ -351,7 +351,7 @@ export default function PsicologosPage() {
       {mostrarModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white text-gray-900 w-full max-w-2xl rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto [&_label]:!text-gray-700 [&_p]:!text-gray-600 [&_input]:!text-gray-900 [&_select]:!text-gray-900 [&_textarea]:!text-gray-900">
 
             {/* CABEÇALHO DO MODAL */}
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -376,7 +376,7 @@ export default function PsicologosPage() {
             {/* FORMULÁRIO */}
             <form
               onSubmit={cadastrarPsicologo}
-              className="p-6 space-y-5"
+              className="p-6 space-y-5 text-gray-900"
             >
 
               <div>
