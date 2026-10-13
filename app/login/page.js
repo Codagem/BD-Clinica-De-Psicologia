@@ -171,12 +171,7 @@ export default function Login() {
       return;
     }
 
-    if (ehPaciente && !dataNascimentoValida(senha)) {
-      setErro(
-        "Data de nascimento inválida. Use o formato DD/MM/AAAA."
-      );
-      return;
-    }
+    
 
     setCarregando(true);
 
@@ -374,13 +369,13 @@ export default function Login() {
     ? "Senha"
     : ehProfissional
       ? "Senha ou data de nascimento no primeiro acesso"
-      : "Data de nascimento";
+      : "Senha ou data de nascimento no primeiro acesso";
 
   const placeholderSenha = ehAdmin
     ? "Digite sua senha"
     : ehProfissional
-      ? "DD/MM/AAAA no primeiro acesso"
-      : "DD/MM/AAAA";
+      ? "Senha ou DD/MM/AAAA"
+      : "Senha pessoal ou DD/MM/AAAA";
 
   const classeBotaoTipo = (ativo) =>
     `p-3 rounded-2xl border transition ${
@@ -502,35 +497,20 @@ export default function Login() {
 
                 <input
                   id="senha"
-                  type={
-                    ehAdmin || ehProfissional
-                      ? mostrarSenha
-                        ? "text"
-                        : "password"
-                      : "text"
-                  }
-                  inputMode={ehPaciente ? "numeric" : "text"}
-                  autoComplete={
-                    ehPaciente ? "off" : "current-password"
-                  }
+                  type={mostrarSenha ? "text" : "password"}
+                  inputMode="text"
+                  autoComplete="current-password"
                   placeholder={placeholderSenha}
                   value={senha}
-                  maxLength={
-                    ehProfissional ? 72 : ehAdmin ? 50 : 10
-                  }
+                  maxLength={72}
                   onChange={(e) => {
                     setErro("");
-
-                    setSenha(
-                      ehPaciente
-                        ? mascararData(e.target.value)
-                        : e.target.value
-                    );
+                    setSenha(e.target.value);
                   }}
                   className="w-full border border-gray-200 rounded-2xl p-4 text-black bg-white outline-none focus:border-[#2b4c7e] transition"
                 />
 
-                {(ehAdmin || ehProfissional) && (
+                {true && (
                   <button
                     type="button"
                     onClick={() =>

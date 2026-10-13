@@ -1,0 +1,196 @@
+[1mdiff --git a/app/api/pacientes/[id]/ficha/route.js b/app/api/pacientes/[id]/ficha/route.js[m
+[1mnew file mode 100644[m
+[1mindex 0000000..5f8d20c[m
+[1m--- /dev/null[m
+[1m+++ b/app/api/pacientes/[id]/ficha/route.js[m
+[36m@@ -0,0 +1,156 @@[m
+[32m+[m
+[32m+[m[32mimport { NextResponse } from "next/server";[m
+[32m+[m[32mimport pool from "@/lib/db";[m
+[32m+[m[32mimport { verificarSessao } from "@/lib/sessao";[m
+[32m+[m[32mimport { registrarAuditoria } from "@/lib/auditoria";[m
+[32m+[m
+[32m+[m[32mexport async function GET(request, { params }) {[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    const token = request.cookies.get("sessao")?.value;[m
+[32m+[m
+[32m+[m[32m    if (!token) {[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { erro: "Sessão não autenticada." },[m
+[32m+[m[32m        { status: 401 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    const sessao = await verificarSessao(token);[m
+[32m+[m
+[32m+[m[32m    if (sessao.tipo_usuario !== "psicologo") {[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { erro: "Acesso permitido somente ao psicólogo." },[m
+[32m+[m[32m        { status: 403 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    const idPsicologo = Number([m
+[32m+[m[32m      sessao.id_psicologo ??[m
+[32m+[m[32m      sessao.usuario?.id_psicologo ??[m
+[32m+[m[32m      sessao.id_usuario[m
+[32m+[m[32m    );[m
+[32m+[m
+[32m+[m[32m    const { id } = await params;[m
+[32m+[m[32m    const idPaciente = Number(id);[m
+[32m+[m
+[32m+[m[32m    if ([m
+[32m+[m[32m      !Number.isSafeInteger(idPsicologo) ||[m
+[32m+[m[32m      idPsicologo <= 0 ||[m
+[32m+[m[32m      !Number.isSafeInteger(idPaciente) ||[m
+[32m+[m[32m      idPaciente <= 0[m
+[32m+[m[32m    ) {[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { erro: "Identificador inválido." },[m
+[32m+[m[32m        { status: 400 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // Confere o vínculo antes de liberar qualquer dado clínico.[m
+[32m+[m[32m    const pacienteResultado = await pool.query([m
+[32m+[m[32m      `[m
+[32m+[m[32m        SELECT[m
+[32m+[m[32m          p.id_paciente,[m
+[32m+[m[32m          p.nome_completo,[m
+[32m+[m[32m          p.data_nascimento,[m
+[32m+[m[32m          p.cpf,[m
+[32m+[m[32m          p.telefone,[m
+[32m+[m[32m          p.profissao[m
+[32m+[m[32m        FROM pacientes p[m
+[32m+[m[32m        WHERE p.id_paciente = $1[m
+[32m+[m[32m          AND EXISTS ([m
+[32m+[m[32m            SELECT 1[m
+[32m+[m[32m            FROM consultas c[m
+[32m+[m[32m            WHERE c.id_paciente = p.id_paciente[m
+[32m+[m[32m              AND c.id_psicologo = $2[m
+[32m+[m[32m          )[m
+[32m+[m[32m        LIMIT 1[m
+[32m+[m[32m      `,[m
+[32m+[m[32m      [idPaciente, idPsicologo][m
+[32m+[m[32m    );[m
+[32m+[m
+[32m+[m[32m    if (pacienteResultado.rows.length === 0) {[m
+[32m+[m[32m      return NextResponse.json([m
+[32m+[m[32m        { erro: "Paciente não encontrado ou sem vínculo com você." },[m
+[32m+[m[32m        { status: 404 }[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    const [anamnesesResultado, consultasResultado, prontuariosResultado] =[m
+[32m+[m[32m      await Promise.all([[m
+[32m+[m[32m        pool.query([m
+[32m+[m[32m          `[m
+[32m+[m[32m            SELECT *[m
+[32m+[m[32m            FROM anamneses[m
+[32m+[m[32m            WHERE id_paciente = $1[m
+[32m+[m[32m            ORDER BY data_cadastro DESC, id_anamnese DESC[m
+[32m+[m[32m          `,[m
+[32m+[m[32m          [idPaciente][m
+[32m+[m[32m        ),[m
+[32m+[m
+[32m+[m[32m        pool.query([m
+[32m+[m[32m          `[m
+[32m+[m[32m            SELECT[m
+[32m+[m[32m              c.id_consulta,[m
+[32m+[m[32m              c.id_paciente,[m
+[32m+[m[32m              c.data_consulta,[m
+[32m+[m[32m              c.horario,[m
+[32m+[m[32m              c.tipo_atendimento,[m
+[32m+[m[32m              c.status_consulta,[m
+[32m+[m[32m              c.observacoes[m
+[32m+[m[32m            FROM consultas c[m
+[32m+[m[32m            WHERE c.id_paciente = $1[m
+[32m+[m[32m              AND c.id_psicologo = $2[m
+[32m+[m[32m            ORDER BY c.data_consulta DESC, c.horario DESC[m
+[32m+[m[32m          `,[m
+[32m+[m[32m          [idPaciente, idPsicologo][m
+[32m+[m[32m        ),[m
+[32m+[m
+[32m+[m[32m        pool.query([m
+[32m+[m[32m          `[m
+[32m+[m[32m            SELECT[m
+[32m+[m[32m              pr.id_prontuario,[m
+[32m+[m[32m              pr.id_paciente,[m
+[32m+[m[32m              pr.id_consulta,[m
+[32m+[m[32m              pr.relato_sessao,[m
+[32m+[m[32m              pr.observacoes_clinicas,[m
+[32m+[m[32m              pr.plano_proxima_sessao,[m
+[32m+[m[32m              pr.data_cadastro,[m
+[32m+[m[32m              c.data_consulta,[m
+[32m+[m[32m              c.horario,[m
+[32m+[m[32m              c.status_consulta[m
+[32m+[m[32m            FROM prontuarios pr[m
+[32m+[m[32m            INNER JOIN consultas c[m
+[32m+[m[32m              ON c.id_consulta = pr.id_consulta[m
+[32m+[m[32m            WHERE pr.id_paciente = $1[m
+[32m+[m[32m              AND pr.id_psicologo = $2[m
+[32m+[m[32m            ORDER BY c.data_consulta DESC, c.horario DESC,[m
+[32m+[m[32m                     pr.id_prontuario DESC[m
+[32m+[m[32m          `,[m
+[32m+[m[32m          [idPaciente, idPsicologo][m
+[32m+[m[32m        ),[m
+[32m+[m[32m      ]);[m
+[32m+[m
+[32m+[m[32m    await registrarAuditoria({[m
+[32m+[m[32m      tipoUsuario: "psicologo",[m
+[32m+[m[32m      idUsuario: idPsicologo,[m
+[32m+[m[32m      acao: "CONSULTAR_FICHA",[m
+[32m+[m[32m      tabelaAfetada: "pacientes",[m
+[32m+[m[32m      registroId: idPaciente,[m
+[32m+[m[32m      detalhes: "Ficha clínica consultada pelo psicólogo responsável.",[m
+[32m+[m[32m    });[m
+[32m+[m
+[32m+[m[32m    return NextResponse.json({[m
+[32m+[m[32m      paciente: pacienteResultado.rows[0],[m
+[32m+[m[32m      anamneses: anamnesesResultado.rows,[m
+[32m+[m[32m      consultas: consultasResultado.rows,[m
+[32m+[m[32m      prontuarios: prontuariosResultado.rows,[m
+[32m+[m[32m    });[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    console.error("Erro ao carregar ficha clínica:", error);[m
+[32m+[m
+[32m+[m[32m    return NextResponse.json([m
+[32m+[m[32m      { erro: "Não foi possível carregar a ficha clínica." },[m
+[32m+[m[32m      { status: 500 }[m
+[32m+[m[32m    );[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+\ No newline at end of file[m
+[1mdiff --git a/app/api/relatorio-anamnese/route.js b/app/api/relatorio-anamnese/route.js[m
+[1mindex ffd5d24..0310c16 100644[m
+[1m--- a/app/api/relatorio-anamnese/route.js[m
+[1m+++ b/app/api/relatorio-anamnese/route.js[m
+[36m@@ -1,6 +1,6 @@[m
+[31m-[m
+ import pool from "@/lib/db";[m
+ import { verificarSessao } from "@/lib/sessao";[m
+[32m+[m[32mimport { registrarAuditoria } from "@/lib/auditoria";[m
+ [m
+ /* =========================================================[m
+    AUTENTICAÇÃO[m
+[36m@@ -34,6 +34,14 @@[m [mfunction converterId(valor) {[m
+     : null;[m
+ }[m
+ [m
+[32m+[m[32mfunction obterIdPsicologo(sessao) {[m
+[32m+[m[32m  return converterId([m
+[32m+[m[32m    sessao.id_psicologo ??[m
+[32m+[m[32m      sessao.usuario?.id_psicologo ??[m
+[32m+[m[32m      sessao.id_usuario[m
+[32m+[m[32m  );[m
+[32m+[m[32m}[m
+[32m+[m
+ /* =========================================================[m
+    GET — ANAMNESES COMPLETAS[m
+    Administrador: todos os registros.[m
+[36m@@ -61,7 +69,7 @@[m [mexport async function GET(req) {[m
+     const parametros = [];[m
+ [m
+     if (sessao.tipo_usuario === "psicologo") {[m
+[31m-      const idPsicologo = converterId(sessao.id_psicologo);[m
+[

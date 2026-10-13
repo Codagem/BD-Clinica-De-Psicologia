@@ -298,6 +298,9 @@ export default function PacientesPsicologo() {
                           Nascimento
                         </th>
                         <th className="px-6 py-4 font-semibold">Telefone</th>
+                        <th className="px-6 py-4 font-semibold text-right">
+                          Ficha clínica
+                        </th>
                       </tr>
                     </thead>
 
@@ -347,6 +350,15 @@ export default function PacientesPsicologo() {
                           <td className="whitespace-nowrap px-6 py-4 text-slate-600">
                             {paciente.telefone || "Não informado"}
                           </td>
+                          <td className="px-6 py-4 text-right">
+                            <Link
+                              href={`/psicologo/pacientes/${paciente.id_paciente ?? paciente.id}`}
+                              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1d3557] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#29496f]"
+                            >
+                              <ClipboardList size={16} />
+                              Abrir ficha
+                            </Link>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -385,11 +397,20 @@ export default function PacientesPsicologo() {
                             {formatarData(paciente.data_nascimento)}
                           </p>
 
+                          
                           <p className="mt-1 break-words text-sm text-slate-500">
                             Telefone: {paciente.telefone || "Não informado"}
                           </p>
                         </div>
                       </div>
+
+                      <Link
+                        href={`/psicologo/pacientes/${paciente.id_paciente ?? paciente.id}`}
+                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1d3557] px-4 py-3 text-sm font-semibold text-white hover:bg-[#29496f]"
+                      >
+                        <ClipboardList size={17} />
+                        Abrir ficha clínica
+                      </Link>
                     </article>
                   ))}
                 </div>
