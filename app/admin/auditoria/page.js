@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 export default function AuditoriaPage() {
   const [auditorias, setAuditorias] = useState([]);
@@ -82,7 +83,18 @@ export default function AuditoriaPage() {
     <div className="min-h-screen bg-[#f8f9fa] p-6 text-black md:p-8">
 
       {/* CABEÇALHO */}
+      
       <div className="mb-8 rounded-[35px] bg-[#1d3557] p-8 shadow-xl">
+
+        {/* BOTÃO VOLTAR */}
+        <Link
+          href="/admin"
+          className="mb-6 inline-flex items-center gap-2 rounded-xl border border-white/30 px-4 py-2 font-semibold text-white transition hover:bg-white/10"
+        >
+          <span aria-hidden="true">←</span>
+          Voltar ao painel administrativo
+        </Link>
+
         <p className="font-semibold text-blue-200">
           Segurança da Informação
         </p>
@@ -94,6 +106,7 @@ export default function AuditoriaPage() {
         <p className="mt-3 text-blue-100">
           Monitoramento dos eventos críticos realizados no sistema.
         </p>
+
       </div>
 
       {/* TABELA */}
