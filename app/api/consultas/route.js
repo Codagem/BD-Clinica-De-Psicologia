@@ -2,12 +2,14 @@ import pool from "@/lib/db";
 import { verificarSessao } from "@/lib/sessao";
 import { registrarAuditoria } from "@/lib/auditoria";
 
+
 const STATUS_PADRAO = "Agendada";
 
 const STATUS_VALIDOS = [
   "Agendada",
   "Agendado",
   "Pendente de confirmação",
+  "Confirmado",
   "Realizado",
   "Realizada",
   "Faltou",
